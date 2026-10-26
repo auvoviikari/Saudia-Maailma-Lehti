@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>SS Toimitus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="admin">
+  <div class="page">
+    <header>
+      <a class="topbar" href="index.html">
+        <span class="topbar__logo">SS.fi</span>
+        <span class="topbar__tagline">Toimitus</span>
+      </a>
+      <div class="masthead"><a href="index.html">Saudian Sanomat</a></div>
+    </header>
+
+    <main class="admin">
+      <!-- Login -->
+      <section class="admin__box" id="loginBox">
+        <h2>Kirjaudu toimitukseen</h2>
+        <p class="admin__help">
+          Uutiset tallennetaan suoraan GitHub-repoosi. Vain henkilö, jolla on
+          kirjoitusoikeus repoon (eli sinä), voi julkaista. Tarvitset GitHub-tokenin:
+          GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> →
+          valitse vain tämä repo ja anna oikeus <code>Contents: Read and write</code>.
+          Token tallentuu vain tämän selaimen muistiin.
+        </p>
+        <div class="row">
+          <div class="field"><label for="owner">GitHub-käyttäjä</label><input id="owner" value="auvoviikari" /></div>
+          <div class="field"><label for="repo">Repo</label><input id="repo" value="saudian-sanomat" /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="branch">Haara <small>(tyhjä = oletushaara)</small></label><input id="branch" placeholder="esim. main" /></div>
+          <div class="field"><label for="folder">Sivuston kansio repossa</label><input id="folder" value="" placeholder="tyhjä = juurikansio" /></div>
+        </div>
+        <div class="field"><label for="token">GitHub-token</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_..." /></div>
+        <div class="actions"><button class="btn" id="loginBtn">Kirjaudu</button></div>
+        <div class="status" id="loginStatus"></div>
+      </section>
+
+      <!-- Editor -->
+      <section class="admin__box hidden" id="editorBox">
+        <h2 id="editorTitle">Uusi uutinen</h2>
+        <div class="field"><label for="fTitle">Otsikko</label><input id="fTitle" maxlength="140" /></div>
+        <div class="field"><label for="fLead">Ingressi <small>(lyhyt tiivistelmä)</small></label><input id="fLead" maxlength="300" /></div>
+        <div class="row">
+          <div class="field"><label for="fCategory">Kategoria</label><input id="fCategory" placeholder="esim. Kotimaa" maxlength="40" /></div>
+          <div class="field"><label for="fAuthor">Kirjoittaja</label><input id="fAuthor" maxlength="80" /></div>
+        </div>
+        <div class="field">
+          <label for="fImage">Kuva <small>(valinnainen)</small></label>
+          <input id="fImage" type="file" accept="image/*" />
+          <img id="imgPreview" class="img-preview hidden" alt="" />
+        </div>
+        <div class="field"><label for="fCaption">Nimilappu kuvassa <small>(vihreä laatikko kuvan kulmassa, valinnainen)</small></label><input id="fCaption" maxlength="60" /></div>
+        <div class="field"><label for="fBody">Teksti <small>(tyhjä rivi = uusi kappale)</small></label><textarea id="fBody"></textarea></div>
+        <div class="actions">
+          <button class="btn" id="publishBtn">Julkaise</button>
+          <button class="btn btn--ghost" id="previewBtn">Esikatsele</button>
+          <button class="btn btn--ghost hidden" id="cancelEditBtn">Peru muokkaus</button>
+        </div>
+        <div class="status" id="publishStatus"></div>
+        <div class="preview-wrap hidden" id="preview"></div>
+      </section>
+
+      <!-- Existing articles -->
+      <section class="admin__box hidden" id="listBox">
+        <h2>Julkaistut uutiset</h2>
+        <ul class="list" id="articleList"></ul>
+        <div class="actions" style="margin-top:16px">
+          <button class="btn btn--ghost btn--small" id="logoutBtn">Kirjaudu ulos</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="site.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
