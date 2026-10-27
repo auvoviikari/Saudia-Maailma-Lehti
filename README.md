@@ -9,4 +9,4 @@ Uutissivusto. Julkiset sivut (`index.html`, `article.html`) vain *lukevat* tiedo
 
 ## Julkaisu
 Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`.
-Sivusto: `https://<käyttäjä>.github.io/saudian-sanomat/`
+Sivusto: https://auvoviikari.github.io/Saudian-Sanomat/ (isot kirjaimet ovat tärkeitä)
