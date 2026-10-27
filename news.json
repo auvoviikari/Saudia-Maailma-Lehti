@@ -1,11 +1,11 @@
 {
   "articles": [
     {
-      "id": "saudian-sanomat-aloittaa",
-      "title": "Saudian Sanomat aloittaa",
-      "lead": "Uusi uutissivusto on nyt auki. Tuoreimmat uutiset löytyvät jatkossa täältä.",
-      "body": "Saudian Sanomat eli SS on avannut ovensa.\n\nUutiset päivittyvät tälle sivulle sitä mukaa kun toimitus julkaisee niitä.\n\nPysy kuulolla!",
-      "category": "SS",
+      "id": "saudia-maailma-lehti-aloittaa",
+      "title": "Saudia & Maailma Lehti aloittaa",
+      "lead": "Uusi uutissivusto on nyt auki. Tuoreimmat uutiset Saudiasta ja maailmalta löytyvät jatkossa täältä.",
+      "body": "Saudia & Maailma Lehti eli SML on avannut ovensa.\n\nUutiset päivittyvät tälle sivulle sitä mukaa kun toimitus julkaisee niitä.\n\nPysy kuulolla!",
+      "category": "SML",
       "author": "Toimitus",
       "image": "",
       "imageCaption": "",

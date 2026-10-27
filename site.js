@@ -1,8 +1,10 @@
-// Saudian Sanomat – read-only rendering of news.json.
+// Saudia & Maailma Lehti – read-only rendering of news.json.
 // All article text is inserted with textContent, so nothing typed in an
 // article can run as code on the page.
 
 const NEWS_URL = "news.json";
+const SITE_NAME = "Saudia & Maailma Lehti";
+const SITE_SHORT = "SML";
 
 async function loadArticles() {
   const res = await fetch(`${NEWS_URL}?t=${Date.now()}`, { cache: "no-store" });
@@ -19,6 +21,12 @@ function el(tag, className, text) {
   return node;
 }
 
+function link(href, className, text) {
+  const a = el("a", className, text);
+  a.href = href;
+  return a;
+}
+
 function formatDate(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return "";
@@ -26,11 +34,31 @@ function formatDate(iso) {
     " klo " + d.toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
 }
 
+function timeAgo(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const min = Math.round((Date.now() - d) / 60000);
+  if (min < 1) return "juuri nyt";
+  if (min < 60) return `${min} min sitten`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} t sitten`;
+  return formatDate(iso);
+}
+
 function safeImageUrl(src) {
   if (!src) return "";
   // Only allow images stored with the site or plain https links.
   if (/^images\/[\w.\-]+$/.test(src) || /^https:\/\//.test(src)) return src;
   return "";
+}
+
+function brand(className = "brand") {
+  const a = link("index.html", className);
+  a.append(el("span", "brand__mark", SITE_SHORT));
+  const name = el("span", "brand__name");
+  name.append("Saudia ", el("em", null, "&"), " Maailma Lehti");
+  a.append(name);
+  return a;
 }
 
 function photo(article) {
@@ -44,7 +72,7 @@ function photo(article) {
     wrap.append(img);
   } else {
     wrap.classList.add("photo--empty");
-    wrap.append(el("span", null, "SS"));
+    wrap.append(el("span", null, SITE_SHORT));
   }
   if (article.imageCaption) wrap.append(el("div", "nametag", article.imageCaption));
   return wrap;
@@ -54,89 +82,215 @@ function articleLink(article) {
   return `article.html?id=${encodeURIComponent(article.id)}`;
 }
 
-function metaLine(article) {
-  return [article.author, formatDate(article.date)].filter(Boolean).join(" · ");
+function categoryLink(category) {
+  return `index.html?kategoria=${encodeURIComponent(category)}`;
 }
 
-function headlinePanel(article, { full = false } = {}) {
-  const panel = el("div", "panel");
-  if (article.category) panel.append(el("div", "panel__kicker", article.category));
-  panel.append(el(full ? "h1" : "h2", "panel__title", article.title));
-  if (article.lead) panel.append(el("p", "panel__lead", article.lead));
-  panel.append(el("div", "panel__meta", metaLine(article)));
-  return panel;
+// ---------- Page chrome (header + footer) ----------
+
+function renderChrome({ articles = [], activeCategory = null, admin = false } = {}) {
+  const header = document.getElementById("site-header");
+  const footer = document.getElementById("site-footer");
+
+  if (header) {
+    const today = new Date().toLocaleDateString("fi-FI", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+    });
+    const utility = el("div", "utility");
+    const uw = el("div", "wrap");
+    uw.append(
+      el("span", null, today.charAt(0).toUpperCase() + today.slice(1)),
+      el("span", "utility__right", admin ? "Toimitus" : "Saudiasta ja maailmalta"),
+    );
+    utility.append(uw);
+
+    const mast = el("div", "masthead");
+    const mw = el("div", "wrap");
+    mw.append(brand(), el("p", "brand__tagline", admin ? "Toimituksen työkalu" : "Uutiset · Analyysit · Maailma"));
+    mast.append(mw);
+
+    const parts = [utility, mast];
+
+    if (!admin) {
+      const nav = el("nav", "nav");
+      const nw = el("div", "wrap");
+      const home = link("index.html", activeCategory ? "" : "is-active", "Etusivu");
+      nw.append(home);
+      const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))];
+      for (const c of categories) {
+        nw.append(link(categoryLink(c), c === activeCategory ? "is-active" : "", c));
+      }
+      nav.append(nw);
+      parts.push(nav);
+
+      if (articles.length) {
+        const ticker = el("div", "ticker");
+        const tw = el("div", "wrap");
+        const viewport = el("div", "ticker__viewport");
+        const track = el("div", "ticker__track");
+        const items = articles.slice(0, 8);
+        // Two copies so the scroll loops seamlessly.
+        for (let i = 0; i < 2; i++) {
+          for (const a of items) track.append(link(articleLink(a), null, a.title));
+        }
+        viewport.append(track);
+        tw.append(el("span", "ticker__label", "Tuoreimmat"), viewport);
+        ticker.append(tw);
+        parts.push(ticker);
+      }
+    }
+    header.replaceChildren(...parts);
+  }
+
+  if (footer && !footer.hasChildNodes()) {
+    const fw = el("div", "wrap");
+    fw.append(
+      brand(),
+      el("span", null, `© ${new Date().getFullYear()} ${SITE_NAME} (${SITE_SHORT}). Kaikki oikeudet pidätetään.`),
+    );
+    footer.append(fw);
+  }
 }
 
-function renderTodayBar() {
-  const bar = document.getElementById("datebar");
-  if (!bar) return;
-  const today = new Date().toLocaleDateString("fi-FI", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
-  bar.textContent = today.charAt(0).toUpperCase() + today.slice(1);
+// ---------- Building blocks ----------
+
+function kicker(article) {
+  return article.category ? el("span", "kicker", article.category) : null;
 }
+
+function hero(article) {
+  const a = link(articleLink(article), "hero");
+  const content = el("div", "hero__content");
+  const k = kicker(article);
+  if (k) content.append(k);
+  content.append(el("h1", "hero__title", article.title));
+  if (article.lead) content.append(el("p", "hero__lead", article.lead));
+  content.append(el("div", "meta", [article.author, timeAgo(article.date)].filter(Boolean).join(" · ")));
+  const pic = photo(article);
+  pic.querySelector("img")?.removeAttribute("loading");
+  a.append(pic, content);
+  return a;
+}
+
+function card(article) {
+  const a = link(articleLink(article), "card");
+  const body = el("div", "card__body");
+  const k = kicker(article);
+  if (k) body.append(k);
+  body.append(el("h3", "card__title", article.title));
+  if (article.lead) body.append(el("p", "card__lead", article.lead));
+  body.append(el("div", "meta", [article.author, timeAgo(article.date)].filter(Boolean).join(" · ")));
+  a.append(photo(article), body);
+  return a;
+}
+
+function latestList(articles) {
+  const box = el("aside", "latest");
+  box.append(el("h2", "latest__title", "Uusimmat"));
+  if (!articles.length) {
+    box.append(el("p", "latest__empty", "Lisää uutisia tulossa pian."));
+    return box;
+  }
+  const ol = el("ol");
+  for (const a of articles) {
+    const li = el("li");
+    const l = link(articleLink(a));
+    const text = el("span");
+    text.append(el("span", "latest__headline", a.title), el("span", "meta", timeAgo(a.date)));
+    l.append(text);
+    li.append(l);
+    ol.append(li);
+  }
+  box.append(ol);
+  return box;
+}
+
+function section(title, articles) {
+  const s = el("section", "section");
+  s.append(el("h2", "section-title", title));
+  const grid = el("div", "grid");
+  grid.append(...articles.map(card));
+  s.append(grid);
+  return s;
+}
+
+// Used by the article page and the newsroom preview.
+function headlinePanel(article) {
+  const head = el("div", "article-head");
+  const k = kicker(article);
+  if (k) head.append(k);
+  head.append(el("h1", "article-head__title", article.title));
+  if (article.lead) head.append(el("p", "article-head__lead", article.lead));
+  const byline = el("div", "byline");
+  const author = article.author || "Toimitus";
+  const initials = author.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const who = el("div");
+  who.append(el("div", "byline__name", author), el("div", "meta", formatDate(article.date)));
+  byline.append(el("div", "byline__avatar", initials), who);
+  head.append(byline);
+  return head;
+}
+
+// ---------- Pages ----------
 
 async function renderFrontPage() {
   const main = document.getElementById("main");
+  const category = new URLSearchParams(location.search).get("kategoria");
   let articles;
   try {
     articles = await loadArticles();
   } catch (err) {
-    main.replaceChildren(el("div", "empty-state", "Uutisia ei voitu ladata"));
+    renderChrome();
+    main.replaceChildren(el("div", "empty-state", "Uutisia ei voitu ladata."));
     return;
   }
-  if (!articles.length) {
-    main.replaceChildren(el("div", "empty-state", "Ei vielä uutisia"));
+  renderChrome({ articles, activeCategory: category });
+
+  const shown = category ? articles.filter((a) => a.category === category) : articles;
+  if (!shown.length) {
+    main.replaceChildren(el("div", "empty-state", "Ei vielä uutisia."));
     return;
   }
+  if (category) document.title = `${category} – ${SITE_NAME}`;
 
-  const [top, ...rest] = articles;
-  const lead = el("a", "lead-story");
-  lead.href = articleLink(top);
-  lead.append(photo(top), headlinePanel(top));
-
-  const nodes = [lead];
-  if (rest.length) {
-    nodes.push(el("h2", "section-head", "Lisää uutisia"));
-    const grid = el("div", "grid");
-    for (const a of rest) {
-      const card = el("a", "card");
-      card.href = articleLink(a);
-      const body = el("div", "card__body");
-      body.append(el("h3", "card__title", a.title));
-      if (a.lead) body.append(el("p", "card__lead", a.lead));
-      body.append(el("div", "card__meta", [a.category, formatDate(a.date)].filter(Boolean).join(" · ")));
-      card.append(photo(a), body);
-      grid.append(card);
-    }
-    nodes.push(grid);
-  }
-  main.replaceChildren(...nodes);
+  const wrap = el("div", "wrap front");
+  const [top, ...rest] = shown;
+  const topRow = el("div", "top");
+  topRow.append(hero(top), latestList(rest.slice(0, 5)));
+  wrap.append(topRow);
+  if (rest.length) wrap.append(section(category ? `Lisää: ${category}` : "Lisää uutisia", rest));
+  main.replaceChildren(wrap);
 }
 
 async function renderArticlePage() {
   const main = document.getElementById("main");
   const id = new URLSearchParams(location.search).get("id");
-  let article;
+  let articles;
   try {
-    article = (await loadArticles()).find((a) => a.id === id);
+    articles = await loadArticles();
   } catch (err) {
-    main.replaceChildren(el("div", "empty-state", "Uutista ei voitu ladata"));
+    renderChrome();
+    main.replaceChildren(el("div", "empty-state", "Uutista ei voitu ladata."));
     return;
   }
+  renderChrome({ articles });
+  const article = articles.find((a) => a.id === id);
   if (!article) {
-    const back = el("a", "back-link", "← Etusivulle");
-    back.href = "index.html";
-    const box = el("div", "empty-state", "Uutista ei löytynyt");
-    box.append(el("br"), back);
+    const box = el("div", "empty-state", "Uutista ei löytynyt.");
+    box.append(el("br"), link("index.html", "back-link", "← Etusivulle"));
     main.replaceChildren(box);
     return;
   }
 
-  document.title = `${article.title} – Saudian Sanomat`;
+  document.title = `${article.title} – ${SITE_NAME}`;
 
-  const body = el("div", "article-body");
-  const inner = el("div", "article-body__inner");
+  const top = el("div", "article-hero");
+  const pic = photo(article);
+  pic.querySelector("img")?.removeAttribute("loading");
+  top.append(pic);
+
+  const body = el("article", "article-body");
+  const text = el("div", "article-body__text");
   for (const para of String(article.body || "").split(/\n\s*\n/)) {
     if (!para.trim()) continue;
     const p = el("p");
@@ -145,16 +299,25 @@ async function renderArticlePage() {
       if (i) p.append(el("br"));
       p.append(document.createTextNode(line));
     });
-    inner.append(p);
+    text.append(p);
   }
-  const back = el("a", "back-link", "← Etusivulle");
-  back.href = "index.html";
-  inner.append(back);
-  body.append(inner);
+  body.append(text, link("index.html", "back-link", "← Etusivulle"));
 
-  main.replaceChildren(photo(article), headlinePanel(article, { full: true }), body);
+  const nodes = [top, headlinePanel(article), body];
+  const others = articles.filter((a) => a.id !== article.id);
+  const related = [
+    ...others.filter((a) => article.category && a.category === article.category),
+    ...others.filter((a) => !article.category || a.category !== article.category),
+  ].slice(0, 3);
+  if (related.length) {
+    const rel = el("div", "related");
+    rel.append(section("Lue myös", related));
+    nodes.push(rel);
+  }
+  main.replaceChildren(...nodes);
 }
 
-renderTodayBar();
-if (document.body.dataset.page === "article") renderArticlePage();
-else if (document.body.dataset.page === "front") renderFrontPage();
+const page = document.body.dataset.page;
+if (page === "article") renderArticlePage();
+else if (page === "front") renderFrontPage();
+else renderChrome({ admin: true });

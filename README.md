@@ -1,4 +1,4 @@
-# Saudian Sanomat (SS)
+# Saudia & Maailma Lehti (SML)
 
 Uutissivusto. Julkiset sivut (`index.html`, `article.html`) vain *lukevat* tiedostoa `news.json` – kukaan vierailija ei voi muuttaa mitään.
 

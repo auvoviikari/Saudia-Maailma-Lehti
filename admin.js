@@ -1,4 +1,4 @@
-// Saudian Sanomat – newsroom. Publishes articles by committing to the GitHub
+// Saudia & Maailma Lehti – newsroom. Publishes articles by committing to the GitHub
 // repo through the GitHub API. Only someone with a token that has write
 // access to the repo can publish; the public pages only ever read news.json.
 
@@ -316,16 +316,19 @@ async function showPreview() {
   const article = { ...data, title: data.title || "Otsikko", date: new Date().toISOString(), image: "" };
   const file = $("fImage").files[0];
   const box = $("preview");
-  const pic = photo(article);
+  // Preview the story as it will look at the top of the front page.
+  const preview = hero(article);
+  preview.removeAttribute("href");
   const src = file ? URL.createObjectURL(file) : editingImage;
   if (src) {
+    const pic = preview.querySelector(".photo");
     pic.classList.remove("photo--empty");
     const img = el("img");
     img.src = src;
     img.alt = "";
     pic.replaceChildren(img, ...(data.imageCaption ? [el("div", "nametag", data.imageCaption)] : []));
   }
-  box.replaceChildren(pic, headlinePanel(article, { full: true }));
+  box.replaceChildren(preview);
   box.classList.remove("hidden");
 }
 
