@@ -116,14 +116,17 @@ function renderChrome({ articles = [], activeCategory = null, admin = false } = 
       const nw = el("div", "wrap");
       const home = link("index.html", activeCategory ? "" : "is-active", "Etusivu");
       nw.append(home);
-      const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))];
+      // A category holding every story would just repeat the front page.
+      const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))]
+        .filter((c) => c === activeCategory || articles.some((a) => a.category !== c));
       for (const c of categories) {
         nw.append(link(categoryLink(c), c === activeCategory ? "is-active" : "", c));
       }
       nav.append(nw);
       parts.push(nav);
 
-      if (articles.length) {
+      // The ticker loops its headlines, so it needs a few to not look repetitive.
+      if (articles.length >= 3) {
         const ticker = el("div", "ticker");
         const tw = el("div", "wrap");
         const viewport = el("div", "ticker__viewport");
