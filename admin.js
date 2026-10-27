@@ -39,7 +39,13 @@ async function gh(path, options = {}) {
   if (!res.ok) {
     let detail = "";
     try { detail = (await res.json()).message || ""; } catch (e) {}
-    const err = new Error(`GitHub ${res.status}${detail ? ": " + detail : ""}`);
+    let text = `GitHub ${res.status}${detail ? ": " + detail : ""}`;
+    if (res.status === 403 && /personal access token/i.test(detail)) {
+      text = "Tokenilla ei ole kirjoitusoikeutta. Muokkaa tokenia GitHubissa: " +
+        "Repository access → Only select repositories → tämä repo, ja " +
+        "Permissions → Contents → Read and write. Kirjaudu sitten uudelleen.";
+    }
+    const err = new Error(text);
     err.status = res.status;
     throw err;
   }
