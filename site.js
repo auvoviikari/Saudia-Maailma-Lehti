@@ -47,9 +47,91 @@ function timeAgo(iso) {
 
 function safeImageUrl(src) {
   if (!src) return "";
-  // Only allow images stored with the site or plain https links.
-  if (/^images\/[\w.\-]+$/.test(src) || /^https:\/\//.test(src)) return src;
+  // Only allow files stored with the site or plain https links.
+  if (/^(images|media)\/[\w.\-]+$/.test(src) || /^https:\/\//.test(src)) return src;
   return "";
+}
+
+// Accepts the usual YouTube link shapes and returns the 11-character video id.
+function youtubeId(url) {
+  const m = String(url || "").trim().match(
+    /^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/);
+  if (m) return m[1];
+  return /^[\w-]{11}$/.test(String(url || "").trim()) ? String(url).trim() : "";
+}
+
+const MEDIA_TOKEN = /^\[media (\d+)\]$/i;
+
+// One photo or video inside a story, with its caption.
+function mediaFigure(item, srcFor = safeImageUrl) {
+  const fig = el("figure", "media");
+  if (item.type === "youtube") {
+    const id = youtubeId(item.youtube);
+    if (!id) return null;
+    const frame = el("iframe");
+    frame.src = `https://www.youtube-nocookie.com/embed/${id}`;
+    frame.title = item.caption || "YouTube-video";
+    frame.loading = "lazy";
+    frame.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+    frame.allowFullscreen = true;
+    const box = el("div", "media__embed");
+    box.append(frame);
+    fig.append(box);
+  } else {
+    const src = srcFor(item.src);
+    if (!src) return null;
+    if (item.type === "video") {
+      const video = el("video");
+      video.src = src;
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      fig.append(video);
+    } else {
+      const img = el("img");
+      img.src = src;
+      img.alt = item.caption || "";
+      img.loading = "lazy";
+      fig.append(img);
+    }
+  }
+  if (item.caption) fig.append(el("figcaption", null, item.caption));
+  return fig;
+}
+
+// Story text with its photos and videos. A paragraph that is only
+// "[media N]" is replaced by the Nth item; items not placed in the text
+// go after it.
+function articleText(article, srcFor = safeImageUrl) {
+  const text = el("div", "article-body__text");
+  const media = Array.isArray(article.media) ? article.media : [];
+  const used = new Set();
+  for (const para of String(article.body || "").split(/\n\s*\n/)) {
+    if (!para.trim()) continue;
+    const token = para.trim().match(MEDIA_TOKEN);
+    if (token) {
+      const n = Number(token[1]) - 1;
+      if (media[n] && !used.has(n)) {
+        used.add(n);
+        const fig = mediaFigure(media[n], srcFor);
+        if (fig) text.append(fig);
+      }
+      continue;
+    }
+    const p = el("p");
+    // Keep single line breaks inside a paragraph.
+    para.trim().split("\n").forEach((line, i) => {
+      if (i) p.append(el("br"));
+      p.append(document.createTextNode(line));
+    });
+    text.append(p);
+  }
+  media.forEach((item, n) => {
+    if (used.has(n)) return;
+    const fig = mediaFigure(item, srcFor);
+    if (fig) text.append(fig);
+  });
+  return text;
 }
 
 function brand(className = "brand") {
@@ -293,18 +375,10 @@ async function renderArticlePage() {
   top.append(pic);
 
   const body = el("article", "article-body");
-  const text = el("div", "article-body__text");
-  for (const para of String(article.body || "").split(/\n\s*\n/)) {
-    if (!para.trim()) continue;
-    const p = el("p");
-    // Keep single line breaks inside a paragraph.
-    para.trim().split("\n").forEach((line, i) => {
-      if (i) p.append(el("br"));
-      p.append(document.createTextNode(line));
-    });
-    text.append(p);
+  if (article.imageText && safeImageUrl(article.image)) {
+    body.append(el("p", "article-body__photo-text", article.imageText));
   }
-  body.append(text, link("index.html", "back-link", "← Etusivulle"));
+  body.append(articleText(article), link("index.html", "back-link", "← Etusivulle"));
 
   // Filled in by comments.js.
   const comments = el("section", "comments");

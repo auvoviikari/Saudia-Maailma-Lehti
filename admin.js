@@ -5,11 +5,16 @@
 const $ = (id) => document.getElementById(id);
 const STORE_KEY = "ss-admin";
 const MAX_IMAGE_WIDTH = 1600;
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+const VIDEO_TYPES = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" };
 
 let cfg = null;          // { owner, repo, branch, folder, token }
 let currentFile = null;  // { sha, data } of news.json
 let editingId = null;
 let editingImage = "";
+// Photos and videos inside the story text. Each is
+// { type: "image"|"video"|"youtube", src?, file?, url?, youtube?, caption }.
+let media = [];
 
 function setStatus(node, msg, kind) {
   node.textContent = msg;
@@ -150,12 +155,16 @@ function formArticle() {
     category: $("fCategory").value.trim(),
     author: $("fAuthor").value.trim(),
     imageCaption: $("fCaption").value.trim(),
+    imageText: $("fImageText").value.trim(),
     body: $("fBody").value.replace(/\r\n/g, "\n").trim(),
   };
 }
 
 function resetForm() {
-  for (const id of ["fTitle", "fLead", "fCategory", "fCaption", "fBody"]) $(id).value = "";
+  for (const id of ["fTitle", "fLead", "fCategory", "fCaption", "fImageText", "fBody"]) $(id).value = "";
+  for (const item of media) if (item.url) URL.revokeObjectURL(item.url);
+  media = [];
+  renderMedia();
   $("fImage").value = "";
   $("imgPreview").classList.add("hidden");
   $("preview").classList.add("hidden");
@@ -195,7 +204,10 @@ function startEdit(a) {
   $("fCategory").value = a.category || "";
   $("fAuthor").value = a.author || "";
   $("fCaption").value = a.imageCaption || "";
+  $("fImageText").value = a.imageText || "";
   $("fBody").value = a.body || "";
+  media = (Array.isArray(a.media) ? a.media : []).map((m) => ({ ...m, caption: m.caption || "" }));
+  renderMedia();
   if (editingImage) {
     $("imgPreview").src = editingImage;
     $("imgPreview").classList.remove("hidden");
@@ -204,6 +216,144 @@ function startEdit(a) {
   $("publishBtn").textContent = "Tallenna muutokset";
   $("cancelEditBtn").classList.remove("hidden");
   $("editorBox").scrollIntoView({ behavior: "smooth" });
+}
+
+// ---------- Photos and videos in the story ----------
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("Tiedostoa ei voitu lukea"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Puts "[media N]" on its own paragraph at the cursor in the story text.
+function insertToken(n) {
+  const box = $("fBody");
+  const token = `[media ${n}]`;
+  const start = box.selectionStart ?? box.value.length;
+  const end = box.selectionEnd ?? start;
+  const before = box.value.slice(0, start).replace(/\s+$/, "");
+  const after = box.value.slice(end).replace(/^\s+/, "");
+  box.value = [before, token, after].filter(Boolean).join("\n\n");
+  const pos = (before ? before.length + 2 : 0) + token.length;
+  box.focus();
+  box.setSelectionRange(pos, pos);
+}
+
+// After removing item n (1-based), drop its marker and renumber the rest.
+function removeToken(n) {
+  const box = $("fBody");
+  box.value = box.value
+    .split(/\n\s*\n/)
+    .filter((p) => {
+      const m = p.trim().match(/^\[media (\d+)\]$/i);
+      return !(m && Number(m[1]) === n);
+    })
+    .map((p) => p.replace(/^(\s*)\[media (\d+)\](\s*)$/i, (all, a, num, b) =>
+      Number(num) > n ? `${a}[media ${Number(num) - 1}]${b}` : all))
+    .join("\n\n");
+}
+
+function addMedia(item) {
+  media.push({ caption: "", ...item });
+  insertToken(media.length);
+  renderMedia();
+}
+
+function mediaThumb(item) {
+  if (item.type === "youtube") {
+    const img = el("img", "media-item__thumb");
+    img.src = `https://i.ytimg.com/vi/${youtubeId(item.youtube)}/mqdefault.jpg`;
+    img.alt = "";
+    return img;
+  }
+  const src = item.url || safeImageUrl(item.src);
+  if (item.type === "video") {
+    const v = el("video", "media-item__thumb");
+    if (src) v.src = src;
+    v.muted = true;
+    v.preload = "metadata";
+    return v;
+  }
+  const img = el("img", "media-item__thumb");
+  img.src = src;
+  img.alt = "";
+  return img;
+}
+
+function renderMedia() {
+  const list = $("mediaList");
+  list.replaceChildren(...media.map((item, i) => {
+    const n = i + 1;
+    const li = el("li", "media-item");
+    const info = el("div");
+    const top = el("div", "media-item__top");
+    const kind = { image: "Kuva", video: "Video", youtube: "YouTube" }[item.type];
+    const name = item.file ? item.file.name : item.type === "youtube" ? item.youtube : item.src;
+    top.append(el("span", "media-item__tag", `[media ${n}]`), el("span", "media-item__name", `${kind} · ${name}`));
+    const caption = el("input");
+    caption.placeholder = "Kuvateksti (valinnainen)";
+    caption.maxLength = 300;
+    caption.value = item.caption;
+    caption.oninput = () => { item.caption = caption.value; };
+    const actions = el("div", "actions");
+    const place = el("button", "btn btn--ghost btn--small", "Lisää tekstiin kursorin kohtaan");
+    place.type = "button";
+    place.onclick = () => insertToken(n);
+    const remove = el("button", "btn btn--danger btn--small", "Poista");
+    remove.type = "button";
+    remove.onclick = () => {
+      if (item.url) URL.revokeObjectURL(item.url);
+      media.splice(i, 1);
+      removeToken(n);
+      renderMedia();
+    };
+    actions.append(place, remove);
+    info.append(top, caption, actions);
+    li.append(mediaThumb(item), info);
+    return li;
+  }));
+}
+
+// Uploads new files and returns the media list as stored in news.json.
+async function uploadMedia(id, title, status) {
+  const stored = [];
+  for (const [i, item] of media.entries()) {
+    const caption = item.caption.trim();
+    if (item.type === "youtube") {
+      stored.push({ type: "youtube", youtube: youtubeId(item.youtube), caption });
+      continue;
+    }
+    let src = item.src;
+    if (item.file) {
+      setStatus(status, `Ladataan ${item.type === "video" ? "videota" : "kuvaa"} ${i + 1}/${media.length}…`);
+      const stamp = Date.now().toString(36);
+      if (item.type === "video") {
+        src = `media/${id}-${i + 1}-${stamp}.${VIDEO_TYPES[item.file.type] || "mp4"}`;
+        await writeFile(filePath(src), await readAsBase64(item.file), `Video: ${title}`);
+      } else {
+        src = `images/${id}-${i + 1}-${stamp}.jpg`;
+        await writeFile(filePath(src), (await resizeImage(item.file)).split(",")[1], `Kuva: ${title}`);
+      }
+      item.src = src;
+      item.file = null;
+    }
+    stored.push({ type: item.type, src, caption });
+  }
+  return stored;
+}
+
+async function deleteRepoFile(path, message) {
+  try {
+    const meta = await gh(`/contents/${filePath(path)}?ref=${encodeURIComponent(cfg.branch)}`);
+    await gh(`/contents/${filePath(path)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ message, sha: meta.sha, branch: cfg.branch }),
+    });
+  } catch (e) { /* a leftover file is harmless */ }
 }
 
 // ---------- Actions ----------
@@ -274,11 +424,14 @@ async function publish() {
       image = name;
     }
 
+    const storedMedia = await uploadMedia(id, data.title, status);
+
     setStatus(status, "Julkaistaan…");
     const article = {
       id,
       ...data,
       image,
+      media: storedMedia,
       date: existing ? existing.date : new Date().toISOString(),
       ...(existing ? { updated: new Date().toISOString() } : {}),
     };
@@ -305,15 +458,9 @@ async function deleteArticle(a) {
     await updateNews((news) => {
       news.articles = news.articles.filter((x) => x.id !== a.id);
     }, `Poista uutinen: ${a.title}`);
-    if (a.image && a.image.startsWith("images/")) {
-      try {
-        const meta = await gh(`/contents/${filePath(a.image)}?ref=${encodeURIComponent(cfg.branch)}`);
-        await gh(`/contents/${filePath(a.image)}`, {
-          method: "DELETE",
-          body: JSON.stringify({ message: `Poista kuva: ${a.title}`, sha: meta.sha, branch: cfg.branch }),
-        });
-      } catch (e) { /* the article is gone; a leftover image is harmless */ }
-    }
+    const files = [a.image, ...(Array.isArray(a.media) ? a.media.map((m) => m.src) : [])]
+      .filter((f) => f && /^(images|media)\//.test(f));
+    for (const f of files) await deleteRepoFile(f, `Poista tiedosto: ${a.title}`);
     if (editingId === a.id) resetForm();
     renderList();
     setStatus(status, "Poistettu.", "ok");
@@ -339,7 +486,12 @@ async function showPreview() {
     img.alt = "";
     pic.replaceChildren(img, ...(data.imageCaption ? [el("div", "nametag", data.imageCaption)] : []));
   }
-  box.replaceChildren(preview);
+  // ...followed by the story page body, with photos and videos in place.
+  const body = el("div", "article-body");
+  if (data.imageText && src) body.append(el("p", "article-body__photo-text", data.imageText));
+  const local = { ...article, media: media.map((m) => ({ ...m, src: m.url || m.src })) };
+  body.append(articleText(local, (s) => (String(s).startsWith("blob:") ? s : safeImageUrl(s))));
+  box.replaceChildren(preview, body);
   box.classList.remove("hidden");
 }
 
@@ -350,6 +502,41 @@ $("logoutBtn").onclick = logout;
 $("publishBtn").onclick = publish;
 $("previewBtn").onclick = showPreview;
 $("cancelEditBtn").onclick = resetForm;
+$("addImageBtn").onclick = () => $("mediaImageInput").click();
+$("addVideoBtn").onclick = () => $("mediaVideoInput").click();
+$("mediaImageInput").onchange = () => {
+  for (const file of $("mediaImageInput").files) {
+    addMedia({ type: "image", file, url: URL.createObjectURL(file) });
+  }
+  $("mediaImageInput").value = "";
+};
+$("mediaVideoInput").onchange = () => {
+  const file = $("mediaVideoInput").files[0];
+  $("mediaVideoInput").value = "";
+  if (!file) return;
+  if (!VIDEO_TYPES[file.type]) {
+    setStatus($("publishStatus"), "Video pitää olla MP4-, WebM- tai MOV-muodossa.", "err");
+    return;
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    setStatus($("publishStatus"), `Video on liian iso (${mb} Mt, enintään 25 Mt). Laita se YouTubeen ja lisää linkkinä.`, "err");
+    return;
+  }
+  setStatus($("publishStatus"), "");
+  addMedia({ type: "video", file, url: URL.createObjectURL(file) });
+};
+$("addYoutubeBtn").onclick = () => {
+  const link = prompt("Liitä YouTube-videon linkki:");
+  if (link == null) return;
+  const id = youtubeId(link);
+  if (!id) {
+    setStatus($("publishStatus"), "Linkki ei ole kelvollinen YouTube-linkki.", "err");
+    return;
+  }
+  setStatus($("publishStatus"), "");
+  addMedia({ type: "youtube", youtube: id });
+};
 $("fImage").onchange = () => {
   const file = $("fImage").files[0];
   if (!file) return;

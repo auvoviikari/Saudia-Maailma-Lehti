@@ -7,6 +7,12 @@ Uutissivusto. Julkiset sivut (`index.html`, `article.html`) vain *lukevat* tiedo
 2. Kirjaudu GitHub-tokenilla (Fine-grained token, vain tämä repo, oikeus **Contents: Read and write**).
 3. Täytä lomake ja paina **Julkaise**. Uutinen näkyy sivulla noin minuutin kuluttua.
 
+## Kuvat ja videot jutun sisällä
+Admin-sivulla "+ Kuva", "+ Video" ja "+ YouTube-linkki" lisäävät tekstiin merkin `[media 1]`,
+`[media 2]` jne. Kuva tai video näkyy jutussa merkin kohdalla, ja jokaiselle voi kirjoittaa
+kuvatekstin. Videot voivat olla enintään 25 Mt (MP4, WebM tai MOV); isommat kannattaa
+laittaa YouTubeen ja lisätä linkkinä.
+
 ## Julkaisu
 Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`.
 Sivusto: https://auvoviikari.github.io/Saudia-Maailma-Lehti/ (isot kirjaimet ovat tärkeitä)

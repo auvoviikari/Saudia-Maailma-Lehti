@@ -53,8 +53,26 @@
           <input id="fImage" type="file" accept="image/*" />
           <img id="imgPreview" class="img-preview hidden" alt="" />
         </div>
+        <div class="field"><label for="fImageText">Kuvateksti <small>(näkyy jutun sivulla pääkuvan alla, valinnainen)</small></label><input id="fImageText" maxlength="300" /></div>
         <div class="field"><label for="fCaption">Nimilappu kuvassa <small>(nimilaatikko kuvan kulmassa, valinnainen)</small></label><input id="fCaption" maxlength="60" /></div>
         <div class="field"><label for="fBody">Teksti <small>(tyhjä rivi = uusi kappale)</small></label><textarea id="fBody"></textarea></div>
+        <div class="field media-tools">
+          <label>Kuvat ja videot jutun sisällä <small>(valinnainen)</small></label>
+          <p class="admin__help">
+            Vie kursori tekstissä kohtaan, johon kuva tai video tulee, ja paina nappia.
+            Tekstiin lisätään merkki <code>[media 1]</code>, jonka kohdalle kuva tulee.
+            Voit siirtää merkkiä tekstissä. Video voi olla enintään 25 Mt; isommat videot
+            kannattaa laittaa YouTubeen ja lisätä linkkinä.
+          </p>
+          <div class="media-tools__buttons">
+            <button class="btn btn--ghost btn--small" id="addImageBtn" type="button">+ Kuva</button>
+            <button class="btn btn--ghost btn--small" id="addVideoBtn" type="button">+ Video</button>
+            <button class="btn btn--ghost btn--small" id="addYoutubeBtn" type="button">+ YouTube-linkki</button>
+            <input id="mediaImageInput" type="file" accept="image/*" multiple hidden />
+            <input id="mediaVideoInput" type="file" accept="video/mp4,video/webm,video/quicktime" hidden />
+          </div>
+          <ul class="media-list" id="mediaList"></ul>
+        </div>
         <div class="actions">
           <button class="btn" id="publishBtn">Julkaise</button>
           <button class="btn btn--ghost" id="previewBtn">Esikatsele</button>
