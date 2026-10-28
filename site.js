@@ -259,7 +259,7 @@ async function renderFrontPage() {
   const wrap = el("div", "wrap front");
   const [top, ...rest] = shown;
   const topRow = el("div", "top");
-  topRow.append(hero(top), latestList(rest.slice(0, 5)));
+  topRow.append(hero(top), latestList(shown.slice(0, 6)));
   wrap.append(topRow);
   if (rest.length) wrap.append(section(category ? `Lisää: ${category}` : "Lisää uutisia", rest));
   main.replaceChildren(wrap);
