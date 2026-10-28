@@ -306,7 +306,11 @@ async function renderArticlePage() {
   }
   body.append(text, link("index.html", "back-link", "← Etusivulle"));
 
-  const nodes = [top, headlinePanel(article), body];
+  // Filled in by comments.js.
+  const comments = el("section", "comments");
+  comments.id = "comments";
+
+  const nodes = [top, headlinePanel(article), body, comments];
   const others = articles.filter((a) => a.id !== article.id);
   const related = [
     ...others.filter((a) => article.category && a.category === article.category),
@@ -318,6 +322,8 @@ async function renderArticlePage() {
     nodes.push(rel);
   }
   main.replaceChildren(...nodes);
+  window.SML_ARTICLE = article;
+  document.dispatchEvent(new CustomEvent("sml:article", { detail: article }));
 }
 
 const page = document.body.dataset.page;

@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Saudia & Maailma Lehti – kommenttien säännöt.
+// Liitä tämä Firebase-konsoliin: Firestore Database → Rules → Publish.
+// Vaihda OMA_UID omaan käyttäjätunnukseesi (Authentication → Users → User UID).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /comments/{commentId} {
+      // Kuka tahansa voi lukea kommentit.
+      allow read: if true;
+
+      // Kuka tahansa voi kommentoida, mutta vain oikean muotoisella kommentilla.
+      allow create: if request.resource.data.keys().hasOnly(['articleId', 'name', 'text', 'createdAt'])
+        && request.resource.data.keys().hasAll(['articleId', 'name', 'text', 'createdAt'])
+        && request.resource.data.articleId is string
+        && request.resource.data.articleId.size() > 0
+        && request.resource.data.articleId.size() <= 120
+        && request.resource.data.name is string
+        && request.resource.data.name.trim().size() > 0
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.text is string
+        && request.resource.data.text.trim().size() > 0
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.createdAt == request.time;
+
+      // Kommentteja ei voi muokata jälkikäteen.
+      allow update: if false;
+
+      // Vain sinä voit poistaa kommentteja.
+      allow delete: if request.auth != null && request.auth.uid == 'OMA_UID';
+    }
+  }
+}
