@@ -227,6 +227,11 @@ async function login() {
     if (!repoInfo.permissions || !repoInfo.permissions.push) {
       throw new Error("Tällä tokenilla ei ole kirjoitusoikeutta repoon.");
     }
+    // GitHub follows renames, so take the repo's current name from the reply.
+    cfg.owner = repoInfo.owner.login;
+    cfg.repo = repoInfo.name;
+    $("owner").value = cfg.owner;
+    $("repo").value = cfg.repo;
     if (!cfg.branch) cfg.branch = repoInfo.default_branch;
     $("branch").value = cfg.branch;
     currentFile = await readNews();
