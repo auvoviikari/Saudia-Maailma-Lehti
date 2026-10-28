@@ -10,7 +10,7 @@ service cloud.firestore {
       allow read: if true;
 
       // Kuka tahansa voi kommentoida, mutta vain oikean muotoisella kommentilla.
-      allow create: if request.resource.data.keys().hasOnly(['articleId', 'name', 'text', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['articleId', 'name', 'text', 'createdAt', 'parentId'])
         && request.resource.data.keys().hasAll(['articleId', 'name', 'text', 'createdAt'])
         && request.resource.data.articleId is string
         && request.resource.data.articleId.size() > 0
@@ -21,7 +21,12 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.trim().size() > 0
         && request.resource.data.text.size() <= 2000
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        // Vastauksessa parentId kertoo, mihin kommenttiin vastataan.
+        && (!('parentId' in request.resource.data)
+            || (request.resource.data.parentId is string
+                && request.resource.data.parentId.size() > 0
+                && request.resource.data.parentId.size() <= 40));
 
       // Kommentteja ei voi muokata jälkikäteen.
       allow update: if false;

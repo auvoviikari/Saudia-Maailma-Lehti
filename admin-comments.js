@@ -76,13 +76,18 @@ async function showList(fb, user) {
     list.replaceChildren(...snap.docs.map((d) => {
       const c = d.data({ serverTimestamps: "estimate" });
       const li = el("li");
-      const text = el("span", null, `${c.name}: ${c.text}`);
+      const text = el("span", null, `${c.parentId ? "↳ vastaus · " : ""}${c.name}: ${c.text}`);
       text.append(el("small", null,
         `${titles[c.articleId] || c.articleId} · ${formatDate(commentDate(c).toISOString())}`));
       const del = el("button", "btn btn--danger btn--small", "Poista");
       del.onclick = async () => {
-        if (!confirm(`Poistetaanko kommentti käyttäjältä "${c.name}"?`)) return;
+        const extra = c.parentId ? "" : " Myös sen vastaukset poistetaan.";
+        if (!confirm(`Poistetaanko kommentti käyttäjältä "${c.name}"?${extra}`)) return;
         try {
+          if (!c.parentId) {
+            const replies = await fs.getDocs(fs.query(fs.collection(db, "comments"), fs.where("parentId", "==", d.id)));
+            await Promise.all(replies.docs.map((r) => fs.deleteDoc(r.ref)));
+          }
           await fs.deleteDoc(d.ref);
           msg.textContent = "Kommentti poistettu.";
           msg.className = "status status--ok";
