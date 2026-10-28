@@ -160,8 +160,58 @@ function photo(article) {
   return wrap;
 }
 
+// Stories published with the newsroom have their own page with a link
+// preview (see share-page.js); older ones fall back to article.html.
 function articleLink(article) {
+  if (/^uutiset\/[\w-]+\.html$/.test(article.page || "")) return article.page;
   return `article.html?id=${encodeURIComponent(article.id)}`;
+}
+
+// ---------- Search ----------
+
+function normalize(text) {
+  return String(text || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Every word must appear somewhere in the story; title hits rank highest.
+function searchArticles(articles, query) {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const results = [];
+  for (const a of articles) {
+    const fields = [
+      [normalize(a.title), 5],
+      [normalize(`${a.lead || ""} ${a.category || ""} ${a.author || ""}`), 2],
+      [normalize(`${a.body || ""} ${(a.media || []).map((m) => m.caption).join(" ")} ${a.imageText || ""}`), 1],
+    ];
+    let score = 0;
+    const all = words.every((w) => {
+      const hits = fields.filter(([text]) => text.includes(w));
+      score += hits.reduce((n, [, weight]) => n + weight, 0);
+      return hits.length > 0;
+    });
+    if (all) results.push({ a, score });
+  }
+  return results.sort((x, y) => y.score - x.score || new Date(y.a.date) - new Date(x.a.date)).map((r) => r.a);
+}
+
+function searchForm(query = "") {
+  const form = el("form", "search");
+  form.action = "index.html";
+  form.role = "search";
+  const input = el("input", "search__input");
+  input.type = "search";
+  input.name = "haku";
+  input.placeholder = "Hae uutisia…";
+  input.setAttribute("aria-label", "Hae uutisia");
+  input.value = query;
+  input.maxLength = 100;
+  const btn = el("button", "search__btn");
+  btn.type = "submit";
+  btn.setAttribute("aria-label", "Hae");
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  form.append(input, btn);
+  return form;
 }
 
 function categoryLink(category) {
@@ -170,7 +220,7 @@ function categoryLink(category) {
 
 // ---------- Page chrome (header + footer) ----------
 
-function renderChrome({ articles = [], activeCategory = null, admin = false } = {}) {
+function renderChrome({ articles = [], activeCategory = null, admin = false, query = "" } = {}) {
   const header = document.getElementById("site-header");
   const footer = document.getElementById("site-footer");
 
@@ -196,14 +246,16 @@ function renderChrome({ articles = [], activeCategory = null, admin = false } = 
     if (!admin) {
       const nav = el("nav", "nav");
       const nw = el("div", "wrap");
-      const home = link("index.html", activeCategory ? "" : "is-active", "Etusivu");
-      nw.append(home);
+      const links = el("div", "nav__links");
+      const home = link("index.html", activeCategory || query ? "" : "is-active", "Etusivu");
+      links.append(home);
       // A category holding every story would just repeat the front page.
       const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))]
         .filter((c) => c === activeCategory || articles.some((a) => a.category !== c));
       for (const c of categories) {
-        nw.append(link(categoryLink(c), c === activeCategory ? "is-active" : "", c));
+        links.append(link(categoryLink(c), c === activeCategory ? "is-active" : "", c));
       }
+      nw.append(links, searchForm(query));
       nav.append(nw);
       parts.push(nav);
 
@@ -269,24 +321,55 @@ function card(article) {
   return a;
 }
 
-function latestList(articles) {
-  const box = el("aside", "latest");
-  box.append(el("h2", "latest__title", "Uusimmat"));
-  if (!articles.length) {
-    box.append(el("p", "latest__empty", "Lisää uutisia tulossa pian."));
-    return box;
-  }
+function rankedList(items) {
   const ol = el("ol");
-  for (const a of articles) {
+  for (const { article, meta } of items) {
     const li = el("li");
-    const l = link(articleLink(a));
+    const l = link(articleLink(article));
     const text = el("span");
-    text.append(el("span", "latest__headline", a.title), el("span", "meta", timeAgo(a.date)));
+    text.append(el("span", "latest__headline", article.title), el("span", "meta", meta));
     l.append(text);
     li.append(l);
     ol.append(li);
   }
-  box.append(ol);
+  return ol;
+}
+
+// Side box with "Uusimmat" and, once views.js has counts, "Luetuimmat".
+function latestList(articles) {
+  const box = el("aside", "latest");
+  const tabs = el("div", "latest__tabs");
+  tabs.setAttribute("role", "tablist");
+  const newest = el("button", "latest__tab is-active", "Uusimmat");
+  const most = el("button", "latest__tab hidden", "Luetuimmat");
+  for (const t of [newest, most]) { t.type = "button"; t.setAttribute("role", "tab"); }
+  tabs.append(newest, most);
+  box.append(tabs);
+
+  const newestPanel = articles.length
+    ? rankedList(articles.map((a) => ({ article: a, meta: timeAgo(a.date) })))
+    : el("p", "latest__empty", "Lisää uutisia tulossa pian.");
+  const mostPanel = el("div", "hidden");
+  box.append(newestPanel, mostPanel);
+
+  const show = (which) => {
+    newest.classList.toggle("is-active", which === "newest");
+    most.classList.toggle("is-active", which === "most");
+    newestPanel.classList.toggle("hidden", which !== "newest");
+    mostPanel.classList.toggle("hidden", which !== "most");
+  };
+  newest.onclick = () => show("newest");
+  most.onclick = () => show("most");
+
+  // Called by views.js with [{ article, count }], most read first.
+  window.SML_setMostRead = (items) => {
+    if (!items.length) return;
+    mostPanel.replaceChildren(rankedList(items.map(({ article, count }) => ({
+      article,
+      meta: `${count} ${count === 1 ? "lukukerta" : "lukukertaa"}`,
+    }))));
+    most.classList.remove("hidden");
+  };
   return box;
 }
 
@@ -316,11 +399,36 @@ function headlinePanel(article) {
   return head;
 }
 
+function shareButton(article) {
+  const btn = el("button", "share-btn");
+  btn.type = "button";
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const label = el("span", null, "Jaa");
+  btn.append(label);
+  btn.onclick = async () => {
+    const url = new URL(articleLink(article), document.baseURI).href;
+    if (navigator.share) {
+      try { await navigator.share({ title: article.title, url }); } catch (e) {}
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      label.textContent = "Linkki kopioitu!";
+    } catch (e) {
+      prompt("Kopioi linkki:", url);
+    }
+    setTimeout(() => { label.textContent = "Jaa"; }, 2500);
+  };
+  return btn;
+}
+
 // ---------- Pages ----------
 
 async function renderFrontPage() {
   const main = document.getElementById("main");
-  const category = new URLSearchParams(location.search).get("kategoria");
+  const params = new URLSearchParams(location.search);
+  const category = params.get("kategoria");
+  const query = (params.get("haku") || "").trim();
   let articles;
   try {
     articles = await loadArticles();
@@ -329,7 +437,30 @@ async function renderFrontPage() {
     main.replaceChildren(el("div", "empty-state", "Uutisia ei voitu ladata."));
     return;
   }
-  renderChrome({ articles, activeCategory: category });
+  renderChrome({ articles, activeCategory: category, query });
+  window.SML_ARTICLES = articles;
+  document.dispatchEvent(new CustomEvent("sml:articles", { detail: articles }));
+
+  if (query) {
+    document.title = `Haku: ${query} – ${SITE_NAME}`;
+    const results = searchArticles(articles, query);
+    const wrap = el("div", "wrap front");
+    const head = el("div", "search-head");
+    head.append(
+      el("h1", "search-head__title", `Hakutulokset: "${query}"`),
+      el("p", "meta", results.length
+        ? `${results.length} ${results.length === 1 ? "uutinen" : "uutista"}`
+        : "Yhtään uutista ei löytynyt. Kokeile toista hakusanaa."),
+    );
+    wrap.append(head);
+    if (results.length) {
+      const grid = el("div", "grid");
+      grid.append(...results.map(card));
+      wrap.append(grid);
+    }
+    main.replaceChildren(wrap);
+    return;
+  }
 
   const shown = category ? articles.filter((a) => a.category === category) : articles;
   if (!shown.length) {
@@ -349,7 +480,8 @@ async function renderFrontPage() {
 
 async function renderArticlePage() {
   const main = document.getElementById("main");
-  const id = new URLSearchParams(location.search).get("id");
+  // A story's own page (uutiset/<id>.html) carries its id; article.html takes ?id=.
+  const id = document.body.dataset.id || new URLSearchParams(location.search).get("id");
   let articles;
   try {
     articles = await loadArticles();
@@ -384,7 +516,10 @@ async function renderArticlePage() {
   const comments = el("section", "comments");
   comments.id = "comments";
 
-  const nodes = [top, headlinePanel(article), body, comments];
+  const head = headlinePanel(article);
+  head.querySelector(".byline").append(shareButton(article));
+
+  const nodes = [top, head, body, comments];
   const others = articles.filter((a) => a.id !== article.id);
   const related = [
     ...others.filter((a) => article.category && a.category === article.category),

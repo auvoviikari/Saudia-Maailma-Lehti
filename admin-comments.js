@@ -3,6 +3,7 @@
 // firestore.rules; only that account is allowed to delete comments.
 
 import { commentsEnabled, firebase, commentDate } from "./comments.js";
+import { firebaseAuth } from "./firebase.js";
 
 const area = document.getElementById("commentsArea");
 let unsubscribe = null;
@@ -117,7 +118,7 @@ async function init() {
   }
   let fb;
   try {
-    fb = await firebase();
+    fb = { ...(await firebase()), ...(await firebaseAuth()) };
   } catch (err) {
     area.replaceChildren(status("Firebasea ei voitu ladata.", "err"));
     return;
@@ -130,6 +131,8 @@ async function init() {
       const snap = await fb.fs.getDocs(fb.fs.query(
         fb.fs.collection(fb.db, "comments"), fb.fs.where("articleId", "==", articleId)));
       await Promise.all(snap.docs.map((d) => fb.fs.deleteDoc(d.ref)));
+      // Its read count goes too, so it can't linger in "Luetuimmat".
+      await fb.fs.deleteDoc(fb.fs.doc(fb.db, "views", articleId)).catch(() => {});
       return snap.size;
     } catch (e) {
       return 0;

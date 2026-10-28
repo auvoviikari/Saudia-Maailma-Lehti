@@ -346,6 +346,17 @@ async function uploadMedia(id, title, status) {
   return stored;
 }
 
+// Creates or replaces a file, looking up the current version when it exists.
+async function putFile(path, base64, message) {
+  let sha;
+  try {
+    sha = (await gh(`/contents/${filePath(path)}?ref=${encodeURIComponent(cfg.branch)}`)).sha;
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
+  return writeFile(filePath(path), base64, message, sha);
+}
+
 async function deleteRepoFile(path, message) {
   try {
     const meta = await gh(`/contents/${filePath(path)}?ref=${encodeURIComponent(cfg.branch)}`);
@@ -456,9 +467,13 @@ async function publish() {
       ...data,
       image,
       media: storedMedia,
+      page: sharePagePath({ id }),
       date: existing ? existing.date : new Date().toISOString(),
       ...(existing ? { updated: new Date().toISOString() } : {}),
     };
+    // The story's own page carries the link preview for chat apps.
+    const siteUrl = new URL(".", location.href).href;
+    await putFile(article.page, utf8ToBase64(sharePageHtml(article, siteUrl)), `Jakosivu: ${data.title}`);
     await updateNews((news) => {
       news.articles = news.articles.filter((a) => a.id !== id);
       news.articles.push(article);
@@ -489,8 +504,8 @@ async function deleteArticle(a) {
     await updateNews((news) => {
       news.articles = news.articles.filter((x) => x.id !== a.id);
     }, `Poista uutinen: ${a.title}`);
-    const files = [a.image, ...(Array.isArray(a.media) ? a.media.map((m) => m.src) : [])]
-      .filter((f) => f && /^(images|media)\//.test(f));
+    const files = [a.image, a.page, ...(Array.isArray(a.media) ? a.media.map((m) => m.src) : [])]
+      .filter((f) => f && /^(images|media|uutiset)\//.test(f));
     for (const f of files) await deleteRepoFile(f, `Poista tiedosto: ${a.title}`);
     if (editingId === a.id) resetForm();
     renderList();

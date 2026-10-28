@@ -13,6 +13,15 @@ Admin-sivulla "+ Kuva", "+ Video" ja "+ YouTube-linkki" lisäävät tekstiin mer
 kuvatekstin. Videot voivat olla enintään 25 Mt (MP4, WebM tai MOV); isommat kannattaa
 laittaa YouTubeen ja lisätä linkkinä.
 
+## Jakaminen, haku ja luetuimmat
+- Jokaisella uutisella on oma sivunsa `uutiset/<id>.html`, jonka admin-sivu tekee
+  julkaistaessa. Siinä on linkin esikatselutiedot (otsikko, ingressi, kuva), jotka
+  WhatsApp, Discord, Instagram ym. näyttävät linkkiä jaettaessa. Kuvattomille uutisille
+  käytetään kuvaa `og-image.png`.
+- Hakukenttä valikossa hakee otsikoista, ingresseistä ja tekstistä.
+- "Luetuimmat"-lista laskee lukukerrat Firebaseen (sama projekti kuin kommenteilla).
+  Sama selain lasketaan kerran päivässä per uutinen.
+
 ## Julkaisu
 Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`.
 Sivusto: https://auvoviikari.github.io/Saudia-Maailma-Lehti/ (isot kirjaimet ovat tärkeitä)

@@ -34,5 +34,17 @@ service cloud.firestore {
       // Vain sinä voit poistaa kommentteja.
       allow delete: if request.auth != null && request.auth.uid == 'OMA_UID';
     }
+
+    // Lukukerrat "Luetuimmat"-listaa varten: views/<uutisen id> = { count }.
+    match /views/{articleId} {
+      allow read: if true;
+      // Lukukertaa voi vain kasvattaa yhdellä.
+      allow create: if articleId.size() <= 120
+        && request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == 1;
+      allow update: if request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == resource.data.count + 1;
+      allow delete: if request.auth != null && request.auth.uid == 'OMA_UID';
+    }
   }
 }

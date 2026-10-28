@@ -3,34 +3,16 @@
 // on the admin page) can delete. The limits here are enforced again by the
 // Firestore security rules in firestore.rules.
 
-const SDK = "https://www.gstatic.com/firebasejs/10.12.2";
+import { firebaseEnabled, firebase } from "./firebase.js";
+
 const NAME_KEY = "sml-nickname";
 const LAST_POST_KEY = "sml-last-comment";
 export const MAX_NAME = 40;
 export const MAX_TEXT = 2000;
 const COOLDOWN_MS = 30 * 1000;
 
-let firebasePromise = null;
-
-export function commentsEnabled() {
-  return Boolean(window.SML_FIREBASE && window.SML_FIREBASE.projectId);
-}
-
-// Loads the Firebase SDK once and returns the modules plus a Firestore handle.
-export function firebase() {
-  if (!firebasePromise) {
-    firebasePromise = (async () => {
-      const [app, fs, auth] = await Promise.all([
-        import(`${SDK}/firebase-app.js`),
-        import(`${SDK}/firebase-firestore.js`),
-        import(`${SDK}/firebase-auth.js`),
-      ]);
-      const instance = app.initializeApp(window.SML_FIREBASE);
-      return { fs, auth, db: fs.getFirestore(instance), authInstance: auth.getAuth(instance) };
-    })();
-  }
-  return firebasePromise;
-}
+export { firebase };
+export const commentsEnabled = firebaseEnabled;
 
 function store(key, value) {
   try {
