@@ -78,7 +78,7 @@ async function showList(fb, user) {
       const li = el("li");
       const text = el("span", null, `${c.parentId ? "↳ vastaus · " : ""}${c.name}: ${c.text}`);
       text.append(el("small", null,
-        `${titles[c.articleId] || c.articleId} · ${formatDate(commentDate(c).toISOString())}`));
+        `${titles[c.articleId] || "Poistettu uutinen"} · ${formatDate(commentDate(c).toISOString())}`));
       const del = el("button", "btn btn--danger btn--small", "Poista");
       del.onclick = async () => {
         const extra = c.parentId ? "" : " Myös sen vastaukset poistetaan.";
@@ -92,7 +92,9 @@ async function showList(fb, user) {
           msg.textContent = "Kommentti poistettu.";
           msg.className = "status status--ok";
         } catch (err) {
-          msg.textContent = "Poisto epäonnistui. Onko UID oikein firestore.rules-tiedostossa?";
+          msg.textContent = err && err.code === "permission-denied"
+            ? "Firebase ei antanut poistaa. Tarkista, että Firestoren Rules-kohdassa on oma User UID:si OMA_UID:n tilalla ja että painoit Publish."
+            : "Poisto epäonnistui. Tarkista nettiyhteys ja yritä uudelleen.";
           msg.className = "status status--err";
         }
       };
@@ -120,6 +122,20 @@ async function init() {
     area.replaceChildren(status("Firebasea ei voitu ladata.", "err"));
     return;
   }
+  // Used by admin.js when a story is deleted. Returns how many comments were
+  // removed, or null when the owner isn't signed in.
+  window.SML_deleteArticleComments = async (articleId) => {
+    if (!fb.authInstance.currentUser) return null;
+    try {
+      const snap = await fb.fs.getDocs(fb.fs.query(
+        fb.fs.collection(fb.db, "comments"), fb.fs.where("articleId", "==", articleId)));
+      await Promise.all(snap.docs.map((d) => fb.fs.deleteDoc(d.ref)));
+      return snap.size;
+    } catch (e) {
+      return 0;
+    }
+  };
+
   fb.auth.onAuthStateChanged(fb.authInstance, (user) => {
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     if (user) showList(fb, user);

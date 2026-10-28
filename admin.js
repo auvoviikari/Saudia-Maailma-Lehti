@@ -356,6 +356,29 @@ async function deleteRepoFile(path, message) {
   } catch (e) { /* a leftover file is harmless */ }
 }
 
+// GitHub Pages takes a minute or two to rebuild after each change. Poll the
+// public news.json and tell the user once the change is actually live.
+let liveCheck = 0;
+async function waitUntilLive(isLive, status, doneMsg) {
+  const run = ++liveCheck;
+  const started = Date.now();
+  while (Date.now() - started < 5 * 60 * 1000) {
+    await new Promise((r) => setTimeout(r, 8000));
+    if (run !== liveCheck) return; // a newer action took over the status line
+    try {
+      if (isLive(await loadArticles())) {
+        setStatus(status, doneMsg, "ok");
+        return;
+      }
+    } catch (e) { /* keep waiting */ }
+    const secs = Math.round((Date.now() - started) / 1000);
+    setStatus(status, `Tallennettu. Odotetaan, että sivu päivittyy… (${secs} s)`);
+  }
+  if (run === liveCheck) {
+    setStatus(status, "Tallennettu, mutta sivun päivitys kestää tavallista kauemmin. Tarkista sivu hetken päästä.", "ok");
+  }
+}
+
 // ---------- Actions ----------
 
 async function login() {
@@ -403,6 +426,7 @@ function logout() {
 
 async function publish() {
   const status = $("publishStatus");
+  liveCheck++;
   const data = formArticle();
   if (!data.title) { setStatus(status, "Otsikko puuttuu.", "err"); return; }
   if (!data.body) { setStatus(status, "Teksti puuttuu.", "err"); return; }
@@ -442,7 +466,13 @@ async function publish() {
 
     resetForm();
     renderList();
-    setStatus(status, "Julkaistu! Näkyy sivulla noin minuutin kuluttua.", "ok");
+    setStatus(status, "Tallennettu. Odotetaan, että sivu päivittyy…");
+    const stamp = article.updated || article.date;
+    waitUntilLive(
+      (list) => list.some((a) => a.id === id && (a.updated || a.date) === stamp),
+      status,
+      existing ? "✓ Muutokset näkyvät nyt sivulla." : "✓ Uutinen näkyy nyt sivulla.",
+    );
   } catch (err) {
     setStatus(status, "Virhe: " + err.message, "err");
   } finally {
@@ -453,6 +483,7 @@ async function publish() {
 async function deleteArticle(a) {
   if (!confirm(`Poistetaanko uutinen "${a.title}"?`)) return;
   const status = $("publishStatus");
+  liveCheck++;
   setStatus(status, "Poistetaan…");
   try {
     await updateNews((news) => {
@@ -463,7 +494,21 @@ async function deleteArticle(a) {
     for (const f of files) await deleteRepoFile(f, `Poista tiedosto: ${a.title}`);
     if (editingId === a.id) resetForm();
     renderList();
-    setStatus(status, "Poistettu.", "ok");
+
+    // The story's comments live in Firebase; admin-comments.js removes them
+    // when the owner is signed in there.
+    let note = "";
+    if (window.SML_deleteArticleComments) {
+      const removed = await window.SML_deleteArticleComments(a.id);
+      if (removed === null) note = " Kirjaudu Kommentit-osioon, niin voit poistaa myös uutisen kommentit.";
+      else if (removed > 0) note = ` Myös ${removed} kommenttia poistettiin.`;
+    }
+    setStatus(status, "Poistettu. Odotetaan, että sivu päivittyy…" + note);
+    waitUntilLive(
+      (list) => !list.some((x) => x.id === a.id),
+      status,
+      "✓ Uutinen on poistettu sivulta." + note,
+    );
   } catch (err) {
     setStatus(status, "Virhe: " + err.message, "err");
   }
