@@ -1,41 +1,38 @@
 rules_version = '2';
 
-// Saudia & Maailma Lehti – kommenttien säännöt.
+// Saudia & Maailma Lehti – Firestoren säännöt.
 // Liitä tämä Firebase-konsoliin: Firestore Database → Rules → Publish.
 // Vaihda OMA_UID omaan käyttäjätunnukseesi (Authentication → Users → User UID).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /comments/{commentId} {
-      // Kuka tahansa voi lukea kommentit.
-      allow read: if true;
 
-      // Kuka tahansa voi kommentoida, mutta vain oikean muotoisella kommentilla.
-      allow create: if request.resource.data.keys().hasOnly(['articleId', 'name', 'text', 'createdAt', 'parentId'])
-        && request.resource.data.keys().hasAll(['articleId', 'name', 'text', 'createdAt'])
-        && request.resource.data.articleId is string
-        && request.resource.data.articleId.size() > 0
-        && request.resource.data.articleId.size() <= 120
-        && request.resource.data.name is string
-        && request.resource.data.name.trim().size() > 0
-        && request.resource.data.name.size() <= 40
-        && request.resource.data.text is string
-        && request.resource.data.text.trim().size() > 0
-        && request.resource.data.text.size() <= 2000
-        && request.resource.data.createdAt == request.time
-        // Vastauksessa parentId kertoo, mihin kommenttiin vastataan.
-        && (!('parentId' in request.resource.data)
-            || (request.resource.data.parentId is string
-                && request.resource.data.parentId.size() > 0
-                && request.resource.data.parentId.size() <= 40));
-
-      // Kommentteja ei voi muokata jälkikäteen.
-      allow update: if false;
-
-      // Vain sinä voit poistaa kommentteja.
-      allow delete: if request.auth != null && request.auth.uid == 'OMA_UID';
+    // Sinä (toimitus) – ainoa, joka voi poistaa ja julkaista.
+    function isOwner() {
+      return request.auth != null && request.auth.uid == 'OMA_UID';
     }
 
-    // Lukukerrat "Luetuimmat"-listaa varten: views/<uutisen id> = { count }.
+    function text(field, min, max) {
+      return request.resource.data[field] is string
+        && request.resource.data[field].trim().size() >= min
+        && request.resource.data[field].size() <= max;
+    }
+
+    // ----- Kommentit -----
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['articleId', 'name', 'text', 'createdAt', 'parentId'])
+        && request.resource.data.keys().hasAll(['articleId', 'name', 'text', 'createdAt'])
+        && text('articleId', 1, 120)
+        && text('name', 1, 40)
+        && text('text', 1, 2000)
+        && request.resource.data.createdAt == request.time
+        // Vastauksessa parentId kertoo, mihin kommenttiin vastataan.
+        && (!('parentId' in request.resource.data) || text('parentId', 1, 40));
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+
+    // ----- Lukukerrat "Luetuimmat"-listaa varten -----
     match /views/{articleId} {
       allow read: if true;
       // Lukukertaa voi vain kasvattaa yhdellä.
@@ -44,7 +41,23 @@ service cloud.firestore {
         && request.resource.data.count == 1;
       allow update: if request.resource.data.keys().hasOnly(['count'])
         && request.resource.data.count == resource.data.count + 1;
-      allow delete: if request.auth != null && request.auth.uid == 'OMA_UID';
+      allow delete: if isOwner();
+    }
+
+    // ----- Mielipidekirjoitukset -----
+    match /letters/{letterId} {
+      // Muut näkevät vain julkaistut; sinä näet kaikki.
+      allow read: if resource.data.status == 'published' || isOwner();
+      // Kuka tahansa voi lähettää, mutta kirjoitus odottaa aina julkaisua.
+      allow create: if request.resource.data.keys().hasOnly(['name', 'place', 'title', 'text', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'title', 'text', 'status', 'createdAt'])
+        && text('name', 1, 60)
+        && (!('place' in request.resource.data) || text('place', 0, 60))
+        && text('title', 1, 120)
+        && text('text', 20, 4000)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isOwner();
     }
   }
 }

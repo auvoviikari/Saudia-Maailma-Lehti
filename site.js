@@ -14,6 +14,30 @@ async function loadArticles() {
   return articles.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+// Team profiles from team.json; an empty list when there are none yet.
+async function loadTeam() {
+  try {
+    const res = await fetch(`team.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.members) ? data.members : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function sameName(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function initialsOf(name) {
+  return String(name || "").trim().split(/\s+/).map((w) => w[0] || "").join("").slice(0, 2).toUpperCase() || "?";
+}
+
+function memberLink(member) {
+  return `tiimi.html?jasen=${encodeURIComponent(member.id)}`;
+}
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -220,7 +244,7 @@ function categoryLink(category) {
 
 // ---------- Page chrome (header + footer) ----------
 
-function renderChrome({ articles = [], activeCategory = null, admin = false, query = "" } = {}) {
+function renderChrome({ articles = [], activeCategory = null, admin = false, query = "", activePage = "" } = {}) {
   const header = document.getElementById("site-header");
   const footer = document.getElementById("site-footer");
 
@@ -247,7 +271,8 @@ function renderChrome({ articles = [], activeCategory = null, admin = false, que
       const nav = el("nav", "nav");
       const nw = el("div", "wrap");
       const links = el("div", "nav__links");
-      const home = link("index.html", activeCategory || query ? "" : "is-active", "Etusivu");
+      const onFront = document.body.dataset.page === "front" && !activeCategory && !query;
+      const home = link("index.html", onFront ? "is-active" : "", "Etusivu");
       links.append(home);
       // A category holding every story would just repeat the front page.
       const categories = [...new Set(articles.map((a) => a.category).filter(Boolean))]
@@ -255,6 +280,9 @@ function renderChrome({ articles = [], activeCategory = null, admin = false, que
       for (const c of categories) {
         links.append(link(categoryLink(c), c === activeCategory ? "is-active" : "", c));
       }
+      links.append(el("span", "nav__divider"));
+      links.append(link("mielipide.html", activePage === "letters" ? "is-active" : "", "Mielipide"));
+      links.append(link("tiimi.html", activePage === "team" ? "is-active" : "", "Tapaa tiimi"));
       nw.append(links, searchForm(query));
       nav.append(nw);
       parts.push(nav);
@@ -281,8 +309,11 @@ function renderChrome({ articles = [], activeCategory = null, admin = false, que
 
   if (footer && !footer.hasChildNodes()) {
     const fw = el("div", "wrap");
+    const flinks = el("nav", "footer__links");
+    flinks.append(link("index.html", null, "Etusivu"), link("mielipide.html", null, "Mielipide"), link("tiimi.html", null, "Tapaa tiimi"));
     fw.append(
       brand(),
+      flinks,
       el("span", null, `© ${new Date().getFullYear()} ${SITE_NAME} (${SITE_SHORT}). Kaikki oikeudet pidätetään.`),
     );
     footer.append(fw);
@@ -383,7 +414,7 @@ function section(title, articles) {
 }
 
 // Used by the article page and the newsroom preview.
-function headlinePanel(article) {
+function headlinePanel(article, member = null) {
   const head = el("div", "article-head");
   const k = kicker(article);
   if (k) head.append(k);
@@ -391,10 +422,24 @@ function headlinePanel(article) {
   if (article.lead) head.append(el("p", "article-head__lead", article.lead));
   const byline = el("div", "byline");
   const author = article.author || "Toimitus";
-  const initials = author.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const avatar = el("div", "byline__avatar", initialsOf(author));
+  if (member && safeImageUrl(member.photo)) {
+    const img = el("img");
+    img.src = member.photo;
+    img.alt = "";
+    avatar.replaceChildren(img);
+  }
   const who = el("div");
-  who.append(el("div", "byline__name", author), el("div", "meta", formatDate(article.date)));
-  byline.append(el("div", "byline__avatar", initials), who);
+  const nameNode = member ? link(memberLink(member), "byline__name", author) : el("div", "byline__name", author);
+  who.append(nameNode);
+  if (member && member.role) who.append(el("div", "byline__role", member.role));
+  who.append(el("div", "meta", formatDate(article.date)));
+  let avatarNode = avatar;
+  if (member) {
+    avatarNode = link(memberLink(member), "byline__avatar-link");
+    avatarNode.append(avatar);
+  }
+  byline.append(avatarNode, who);
   head.append(byline);
   return head;
 }
@@ -483,6 +528,7 @@ async function renderArticlePage() {
   // A story's own page (uutiset/<id>.html) carries its id; article.html takes ?id=.
   const id = document.body.dataset.id || new URLSearchParams(location.search).get("id");
   let articles;
+  const teamPromise = loadTeam();
   try {
     articles = await loadArticles();
   } catch (err) {
@@ -516,7 +562,8 @@ async function renderArticlePage() {
   const comments = el("section", "comments");
   comments.id = "comments";
 
-  const head = headlinePanel(article);
+  const member = (await teamPromise).find((m) => sameName(m.name, article.author)) || null;
+  const head = headlinePanel(article, member);
   head.querySelector(".byline").append(shareButton(article));
 
   const nodes = [top, head, body, comments];
@@ -535,7 +582,115 @@ async function renderArticlePage() {
   document.dispatchEvent(new CustomEvent("sml:article", { detail: article }));
 }
 
+function pageHead(title, intro) {
+  const head = el("div", "page-head");
+  head.append(el("h1", "page-head__title", title));
+  if (intro) head.append(el("p", "page-head__intro", intro));
+  return head;
+}
+
+function memberPhoto(member, className) {
+  const box = el("div", className);
+  if (safeImageUrl(member.photo)) {
+    const img = el("img");
+    img.src = member.photo;
+    img.alt = member.name;
+    img.loading = "lazy";
+    box.append(img);
+  } else {
+    box.classList.add(`${className}--empty`);
+    box.textContent = initialsOf(member.name);
+  }
+  return box;
+}
+
+function bioText(node, text) {
+  for (const para of String(text || "").split(/\n\s*\n/)) {
+    if (para.trim()) node.append(el("p", null, para.trim()));
+  }
+}
+
+async function renderTeamPage() {
+  const main = document.getElementById("main");
+  const [articles, team] = await Promise.all([loadArticles().catch(() => []), loadTeam()]);
+  renderChrome({ articles, activePage: "team" });
+  const wrap = el("div", "wrap subpage");
+  const storiesBy = (m) => articles.filter((a) => sameName(a.author, m.name));
+
+  const id = new URLSearchParams(location.search).get("jasen");
+  const member = id && team.find((m) => m.id === id);
+  if (member) {
+    document.title = `${member.name} – ${SITE_NAME}`;
+    const profile = el("section", "profile");
+    const info = el("div", "profile__info");
+    info.append(el("h1", "profile__name", member.name));
+    if (member.role) info.append(el("p", "profile__role", member.role));
+    const bio = el("div", "profile__bio");
+    bioText(bio, member.bio);
+    info.append(bio);
+    if (/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(member.email || "")) {
+      info.append(link(`mailto:${member.email}`, "profile__email", member.email));
+    }
+    profile.append(memberPhoto(member, "profile__photo"), info);
+    wrap.append(link("tiimi.html", "page-back", "← Koko tiimi"), profile);
+    const stories = storiesBy(member);
+    if (stories.length) wrap.append(section(`Jutut (${stories.length})`, stories));
+    else wrap.append(el("p", "page-head__intro", "Ei vielä julkaistuja juttuja."));
+    main.replaceChildren(wrap);
+    return;
+  }
+
+  document.title = `Tapaa tiimi – ${SITE_NAME}`;
+  wrap.append(pageHead("Tapaa tiimi", "Ihmiset Saudia & Maailma Lehden takana."));
+  if (!team.length) {
+    wrap.append(el("div", "empty-state", "Tiimin esittely tulossa pian."));
+  } else {
+    const grid = el("div", "team-grid");
+    for (const m of team) {
+      const card = link(memberLink(m), "team-card");
+      const body = el("div", "team-card__body");
+      body.append(el("h2", "team-card__name", m.name));
+      if (m.role) body.append(el("p", "team-card__role", m.role));
+      if (m.bio) {
+        const short = m.bio.replace(/\s+/g, " ").trim();
+        body.append(el("p", "team-card__bio", short.length > 160 ? `${short.slice(0, 157).trimEnd()}…` : short));
+      }
+      const n = storiesBy(m).length;
+      body.append(el("span", "meta", n ? `${n} ${n === 1 ? "juttu" : "juttua"}` : "Ei vielä juttuja"));
+      card.append(memberPhoto(m, "team-card__photo"), body);
+      grid.append(card);
+    }
+    wrap.append(grid);
+  }
+  main.replaceChildren(wrap);
+}
+
+async function renderLettersPage() {
+  const main = document.getElementById("main");
+  const articles = await loadArticles().catch(() => []);
+  renderChrome({ articles, activePage: "letters" });
+  document.title = `Mielipide – ${SITE_NAME}`;
+  const wrap = el("div", "wrap subpage");
+  wrap.append(pageHead("Mielipide",
+    "Lukijoiden kirjoitukset toimitukselle. Onko sinulla sanottavaa? Kirjoita meille – julkaisemme valitut kirjoitukset tällä sivulla."));
+  const cols = el("div", "letters-layout");
+  const list = el("div", "letters");
+  list.id = "letterList";
+  list.append(el("p", "letters__empty", "Ladataan kirjoituksia…"));
+  const side = el("aside", "letters-side");
+  side.append(el("h2", "section-title", "Kirjoita mielipiteesi"));
+  const form = el("div");
+  form.id = "letterForm";
+  side.append(form);
+  cols.append(list, side);
+  wrap.append(cols);
+  main.replaceChildren(wrap);
+  document.dispatchEvent(new CustomEvent("sml:page"));
+}
+
 const page = document.body.dataset.page;
 if (page === "article") renderArticlePage();
 else if (page === "front") renderFrontPage();
+else if (page === "team") renderTeamPage();
+else if (page === "letters") renderLettersPage();
 else renderChrome({ admin: true });

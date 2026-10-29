@@ -22,6 +22,17 @@ laittaa YouTubeen ja lisätä linkkinä.
 - "Luetuimmat"-lista laskee lukukerrat Firebaseen (sama projekti kuin kommenteilla).
   Sama selain lasketaan kerran päivässä per uutinen.
 
+## Mielipide
+Lukijat lähettävät mielipidekirjoituksia sivulla `mielipide.html`. Kirjoitukset tallentuvat
+Firebaseen odottamaan, ja ne näkyvät sivulla vasta kun julkaiset ne admin-sivun
+**Mielipidekirjoitukset**-osiosta (kirjaudu ensin Kommentit-osioon Firebase-tunnuksella).
+
+## Tapaa tiimi
+Admin-sivun **Tapaa tiimi** -osiossa voit lisätä toimittajien profiileja (kuva, nimi, titteli,
+esittely, sähköposti). Ne tallentuvat tiedostoon `team.json` ja näkyvät sivulla `tiimi.html`.
+Kun uutisen kirjoittajaksi laitetaan sama nimi kuin profiilissa, jutussa näkyy kirjoittajan
+kuva ja linkki profiiliin, ja profiilissa näkyvät hänen juttunsa.
+
 ## Julkaisu
 Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`.
 Sivusto: https://auvoviikari.github.io/Saudia-Maailma-Lehti/ (isot kirjaimet ovat tärkeitä)

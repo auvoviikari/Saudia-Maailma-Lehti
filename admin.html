@@ -46,7 +46,7 @@
         <div class="field"><label for="fLead">Ingressi <small>(lyhyt tiivistelmä)</small></label><input id="fLead" maxlength="300" /></div>
         <div class="row">
           <div class="field"><label for="fCategory">Kategoria</label><input id="fCategory" placeholder="esim. Kotimaa" maxlength="40" /></div>
-          <div class="field"><label for="fAuthor">Kirjoittaja</label><input id="fAuthor" maxlength="80" /></div>
+          <div class="field"><label for="fAuthor">Kirjoittaja</label><input id="fAuthor" maxlength="80" list="authorList" /><datalist id="authorList"></datalist></div>
         </div>
         <div class="field">
           <label for="fImage">Kuva <small>(valinnainen)</small></label>
@@ -91,10 +91,45 @@
         </div>
       </section>
 
+      <!-- Team profiles -->
+      <section class="admin__box hidden" id="teamBox">
+        <h2>Tapaa tiimi</h2>
+        <p class="admin__help">
+          Profiilit näkyvät Tapaa tiimi -sivulla. Kun uutisen <b>Kirjoittaja</b>-kenttään
+          laitetaan sama nimi kuin profiilissa, jutussa näkyy kirjoittajan kuva ja linkki profiiliin.
+        </p>
+        <ul class="list" id="teamList"></ul>
+        <h3 class="admin__subtitle" id="teamFormTitle">Uusi profiili</h3>
+        <div class="row">
+          <div class="field"><label for="tName">Nimi</label><input id="tName" maxlength="80" /></div>
+          <div class="field"><label for="tRole">Titteli <small>(esim. Päätoimittaja)</small></label><input id="tRole" maxlength="80" /></div>
+        </div>
+        <div class="field"><label for="tBio">Esittely <small>(tyhjä rivi = uusi kappale)</small></label><textarea id="tBio" class="textarea--short" maxlength="3000"></textarea></div>
+        <div class="row">
+          <div class="field">
+            <label for="tPhoto">Kuva <small>(rajataan neliöksi)</small></label>
+            <input id="tPhoto" type="file" accept="image/*" />
+            <img id="tPhotoPreview" class="img-preview img-preview--round hidden" alt="" />
+          </div>
+          <div class="field"><label for="tEmail">Sähköposti <small>(valinnainen, näkyy profiilissa)</small></label><input id="tEmail" type="email" maxlength="120" /></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="teamSaveBtn">Lisää profiili</button>
+          <button class="btn btn--ghost hidden" id="teamCancelBtn">Peru muokkaus</button>
+        </div>
+        <div class="status" id="teamStatus"></div>
+      </section>
+
       <!-- Comment moderation -->
       <section class="admin__box" id="commentsBox">
         <h2>Kommentit</h2>
         <div id="commentsArea"></div>
+      </section>
+
+      <!-- Letters to the editor -->
+      <section class="admin__box" id="lettersBox">
+        <h2>Mielipidekirjoitukset</h2>
+        <div id="lettersArea"></div>
       </section>
     </main>
 
@@ -103,7 +138,9 @@
   <script src="site.js"></script>
   <script src="share-page.js"></script>
   <script src="admin.js"></script>
+  <script src="admin-team.js"></script>
   <script src="comments-config.js"></script>
   <script type="module" src="admin-comments.js"></script>
+  <script type="module" src="admin-letters.js"></script>
 </body>
 </html>

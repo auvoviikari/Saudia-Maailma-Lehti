@@ -77,19 +77,41 @@ function base64ToUtf8(b64) {
   return new TextDecoder().decode(bytes);
 }
 
-async function readNews() {
+// Reads a JSON file from the repo: { sha, data }, or the given empty value.
+async function readJsonFile(name, empty) {
   const ref = `?ref=${encodeURIComponent(cfg.branch)}`;
   try {
-    const meta = await gh(`/contents/${filePath("news.json")}${ref}`);
+    const meta = await gh(`/contents/${filePath(name)}${ref}`);
     let content = meta.content;
     if (!content) content = (await gh(`/git/blobs/${meta.sha}`)).content; // files over 1 MB
-    const data = JSON.parse(base64ToUtf8(content));
-    if (!Array.isArray(data.articles)) data.articles = [];
-    return { sha: meta.sha, data };
+    return { sha: meta.sha, data: JSON.parse(base64ToUtf8(content)) };
   } catch (err) {
-    if (err.status === 404) return { sha: null, data: { articles: [] } };
+    if (err.status === 404) return { sha: null, data: empty };
     throw err;
   }
+}
+
+// Reads a JSON file, applies a change and writes it back. Retries once if
+// someone else changed the file in between. Returns { sha, data }.
+async function updateJsonFile(name, empty, change, message) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const file = await readJsonFile(name, empty);
+    change(file.data);
+    const json = JSON.stringify(file.data, null, 2) + "\n";
+    try {
+      const res = await writeFile(filePath(name), utf8ToBase64(json), message, file.sha);
+      return { sha: res.content.sha, data: file.data };
+    } catch (err) {
+      if ((err.status === 409 || err.status === 422) && attempt === 0) continue;
+      throw err;
+    }
+  }
+}
+
+async function readNews() {
+  const file = await readJsonFile("news.json", { articles: [] });
+  if (!Array.isArray(file.data.articles)) file.data.articles = [];
+  return file;
 }
 
 async function writeFile(path, base64, message, sha) {
@@ -99,23 +121,12 @@ async function writeFile(path, base64, message, sha) {
   });
 }
 
-// Read news.json, apply a change, write it back. Retries once if someone
-// else changed the file in between.
 async function updateNews(change, message) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const file = await readNews();
-    change(file.data);
-    file.data.articles.sort((a, b) => new Date(b.date) - new Date(a.date));
-    const json = JSON.stringify(file.data, null, 2) + "\n";
-    try {
-      const res = await writeFile(filePath("news.json"), utf8ToBase64(json), message, file.sha);
-      currentFile = { sha: res.content.sha, data: file.data };
-      return;
-    } catch (err) {
-      if ((err.status === 409 || err.status === 422) && attempt === 0) continue;
-      throw err;
-    }
-  }
+  currentFile = await updateJsonFile("news.json", { articles: [] }, (data) => {
+    if (!Array.isArray(data.articles)) data.articles = [];
+    change(data);
+    data.articles.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, message);
 }
 
 // ---------- Images ----------
@@ -425,6 +436,7 @@ async function login() {
     $("listBox").classList.remove("hidden");
     if (!$("fAuthor").value) $("fAuthor").value = "Toimitus";
     renderList();
+    document.dispatchEvent(new CustomEvent("sml:github-login"));
   } catch (err) {
     setStatus(status, err.status === 401 ? "Token ei kelpaa." : err.message, "err");
   }
