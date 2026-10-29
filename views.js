@@ -3,7 +3,7 @@
 // reader's browser counts a story at most once a day; firestore.rules only
 // lets anyone raise a count by exactly one.
 
-import { firebaseEnabled, firebase } from "./firebase.js?v=20261029";
+import { firebaseEnabled, firebase } from "./firebase.js?v=20261029b";
 
 const SEEN_KEY = "sml-seen";
 const MOST_READ = 5;

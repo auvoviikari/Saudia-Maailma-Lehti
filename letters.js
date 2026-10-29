@@ -3,7 +3,7 @@
 // on the admin page) can publish them, and only published letters can be
 // read by others. firestore.rules enforces both.
 
-import { firebaseEnabled, firebase } from "./firebase.js?v=20261029";
+import { firebaseEnabled, firebase } from "./firebase.js?v=20261029b";
 
 export const LIMITS = { name: 60, place: 60, title: 120, text: 4000 };
 const NAME_KEY = "sml-letter-name";

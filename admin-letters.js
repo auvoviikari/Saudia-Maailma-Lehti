@@ -1,8 +1,8 @@
 // Saudia & Maailma Lehti – newsroom: letters to the editor waiting for
 // approval. Uses the same Firebase sign-in as comment moderation.
 
-import { firebaseEnabled, firebase, firebaseAuth } from "./firebase.js?v=20261029";
-import { letterDate } from "./letters.js?v=20261029";
+import { firebaseEnabled, firebase, firebaseAuth } from "./firebase.js?v=20261029b";
+import { letterDate } from "./letters.js?v=20261029b";
 
 const area = document.getElementById("lettersArea");
 let unsubscribe = null;

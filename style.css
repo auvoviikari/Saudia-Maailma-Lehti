@@ -79,19 +79,15 @@ a { color: inherit; text-decoration: none; }
 }
 .brand__mark {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, var(--navy-500), var(--navy-700));
-  border: 1px solid rgba(255,255,255,0.18);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
-  font-family: var(--serif);
-  font-weight: 900;
-  font-size: 1.15rem;
-  letter-spacing: 0.04em;
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+  transition: transform 0.4s ease;
 }
+.brand__mark svg { display: block; width: 100%; height: 100%; }
+.brand:hover .brand__mark { transform: rotate(-8deg); }
 .brand__name {
   font-family: var(--serif);
   font-weight: 900;
@@ -100,7 +96,7 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: -0.01em;
   text-align: left;
 }
-.brand__name em { font-style: italic; font-weight: 700; color: var(--navy-300); }
+.brand__name em { font-style: italic; font-weight: 700; color: #d4af5a; }
 .brand__tagline {
   margin: 10px 0 0;
   color: var(--text-dim);
@@ -581,7 +577,7 @@ a { color: inherit; text-decoration: none; }
   padding-top: 26px;
   padding-bottom: 26px;
 }
-.footer .brand__mark { width: 40px; height: 40px; font-size: 0.8rem; border-radius: 9px; }
+.footer .brand__mark { width: 46px; height: 46px; }
 .footer .brand__name { font-size: 1.1rem; color: var(--text); }
 .footer a:hover { color: var(--text); }
 
@@ -661,7 +657,7 @@ a { color: inherit; text-decoration: none; }
 .article-hero .nametag { top: 14px; bottom: auto; }
 @media (max-width: 560px) {
   .utility__right { display: none; }
-  .brand__mark { width: 46px; height: 46px; font-size: 0.95rem; }
+  .brand__mark { width: 58px; height: 58px; }
 }
 
 /* ---------- Comments ---------- */

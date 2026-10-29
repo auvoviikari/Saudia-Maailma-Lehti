@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="SML">
+  <defs>
+    <linearGradient id="sml-gold-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0d78c"/><stop offset="1" stop-color="#c39a45"/></linearGradient>
+    <linearGradient id="sml-navy-s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b5296"/><stop offset="1" stop-color="#0f1d3a"/></linearGradient>
+  </defs>
+  <circle cx="200" cy="200" r="182" fill="url(#sml-navy-s)" stroke="url(#sml-gold-s)" stroke-width="28"/>
+  <text x="200" y="268" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="900" font-size="200" fill="#eef2fa">S</text>
+</svg>

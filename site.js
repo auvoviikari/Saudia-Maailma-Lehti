@@ -158,9 +158,15 @@ function articleText(article, srcFor = safeImageUrl) {
   return text;
 }
 
+// The SML seal (same drawing as logo.svg), inline so it uses the page's fonts.
+const SEAL_SVG = '<svg viewBox="0 0 400 400" aria-hidden="true" focusable="false"><defs><linearGradient id="sml-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0d78c"/><stop offset="1" stop-color="#c39a45"/></linearGradient><linearGradient id="sml-navy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b5296"/><stop offset="1" stop-color="#0f1d3a"/></linearGradient><path id="sml-ring" d="M200,200 m-127,0 a127,127 0 1,1 254,0 a127,127 0 1,1 -254,0"/></defs><circle cx="200" cy="200" r="190" fill="url(#sml-navy)" stroke="url(#sml-gold)" stroke-width="8"/><circle cx="200" cy="200" r="168" fill="none" stroke="url(#sml-gold)" stroke-width="2"/><circle cx="200" cy="200" r="104" fill="none" stroke="url(#sml-gold)" stroke-width="2"/><text font-family="Inter, \'Segoe UI\', Arial, sans-serif" font-weight="800" font-size="24" fill="url(#sml-gold)"><textPath href="#sml-ring" textLength="786" lengthAdjust="spacing">SAUDIA &amp; MAAILMA LEHTI ★ PERUSTETTU 2026 ★</textPath></text><path d="M200,129 l7.6,15.6 17.2,2.5 -12.4,12.1 2.9,17.1 -15.3,-8.1 -15.3,8.1 2.9,-17.1 -12.4,-12.1 17.2,-2.5z" fill="url(#sml-gold)"/><text x="200" y="240" text-anchor="middle" font-family="\'Playfair Display\', Georgia, serif" font-weight="900" font-size="80" fill="#eef2fa">SML</text><path d="M146,262 h108" stroke="url(#sml-gold)" stroke-width="2.5"/></svg>';
+
 function brand(className = "brand") {
   const a = link("index.html", className);
-  a.append(el("span", "brand__mark", SITE_SHORT));
+  a.setAttribute("aria-label", `${SITE_NAME} – etusivu`);
+  const mark = el("span", "brand__mark");
+  mark.innerHTML = SEAL_SVG;
+  a.append(mark);
   const name = el("span", "brand__name");
   name.append("Saudia ", el("em", null, "&"), " Maailma Lehti");
   a.append(name);

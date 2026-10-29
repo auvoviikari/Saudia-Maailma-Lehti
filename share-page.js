@@ -35,6 +35,10 @@ function sharePageHtml(article, siteUrl) {
 <title>${e(article.title)} – Saudia &amp; Maailma Lehti</title>
 <meta name="description" content="${e(description)}" />
 <meta name="theme-color" content="#0a1428" />
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="manifest" href="site.webmanifest" />
 <link rel="canonical" href="${e(url)}" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Saudia &amp; Maailma Lehti" />
@@ -52,7 +56,7 @@ ${article.category ? `<meta property="article:section" content="${e(article.cate
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20261029" />
+<link rel="stylesheet" href="style.css?v=20261029b" />
 </head>
 <body data-page="article" data-id="${e(article.id)}">
   <div class="page">
@@ -64,10 +68,10 @@ ${article.category ? `<meta property="article:section" content="${e(article.cate
 
     <footer class="footer" id="site-footer"></footer>
   </div>
-  <script src="site.js?v=20261029"></script>
-  <script src="comments-config.js?v=20261029"></script>
-  <script type="module" src="comments.js?v=20261029"></script>
-  <script type="module" src="views.js?v=20261029"></script>
+  <script src="site.js?v=20261029b"></script>
+  <script src="comments-config.js?v=20261029b"></script>
+  <script type="module" src="comments.js?v=20261029b"></script>
+  <script type="module" src="views.js?v=20261029b"></script>
 </body>
 </html>
 `;

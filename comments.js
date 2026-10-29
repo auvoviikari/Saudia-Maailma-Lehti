@@ -3,7 +3,7 @@
 // on the admin page) can delete. The limits here are enforced again by the
 // Firestore security rules in firestore.rules.
 
-import { firebaseEnabled, firebase } from "./firebase.js?v=20261029";
+import { firebaseEnabled, firebase } from "./firebase.js?v=20261029b";
 
 const NAME_KEY = "sml-nickname";
 const LAST_POST_KEY = "sml-last-comment";
