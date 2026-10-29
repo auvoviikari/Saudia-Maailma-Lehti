@@ -1,8 +1,8 @@
 // Saudia & Maailma Lehti – newsroom: letters to the editor waiting for
 // approval. Uses the same Firebase sign-in as comment moderation.
 
-import { firebaseEnabled, firebase, firebaseAuth } from "./firebase.js?v=20261029b";
-import { letterDate } from "./letters.js?v=20261029b";
+import { firebaseEnabled, firebase, firebaseAuth } from "./firebase.js?v=20261029c";
+import { letterDate, letterThreadId } from "./letters.js?v=20261029c";
 
 const area = document.getElementById("lettersArea");
 let unsubscribe = null;
@@ -44,8 +44,11 @@ function letterRow(fb, d, msg) {
   };
   const del = el("button", "btn btn--danger btn--small", "Poista");
   del.onclick = async () => {
-    if (!confirm(`Poistetaanko kirjoitus "${l.title}"?`)) return;
+    if (!confirm(`Poistetaanko kirjoitus "${l.title}"? Myös sen kommentit poistetaan.`)) return;
     try {
+      const comments = await fs.getDocs(fs.query(fs.collection(fb.db, "comments"),
+        fs.where("articleId", "==", letterThreadId(d.id))));
+      await Promise.all(comments.docs.map((c) => fs.deleteDoc(c.ref)));
       await fs.deleteDoc(d.ref);
       show(msg, "Kirjoitus poistettu.", "ok");
     } catch (err) {

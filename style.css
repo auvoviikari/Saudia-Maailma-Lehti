@@ -1025,3 +1025,35 @@ a.byline__name:hover { color: var(--navy-300); text-decoration: underline; }
 .admin__box.is-closed .admin__toggle::after { transform: rotate(-45deg); }
 .admin__box.is-closed .admin__body { display: none; }
 .admin__box.is-closed { padding-bottom: 20px; }
+
+/* Comments on letters to the editor */
+.letter__comments { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.letter__comment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--navy-800);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.letter__comment-btn::before { content: "💬"; font-size: 0.9rem; }
+.letter__comment-btn:hover, .letter__comment-btn.is-open { background: var(--navy-600); }
+.letter__comment-box { margin-top: 14px; }
+.comments__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+.letter__comment-box .comment-form { margin: 10px 0 16px; padding: 14px; }
+.letter__comment-box .comment-form textarea { min-height: 80px; }

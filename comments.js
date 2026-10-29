@@ -3,7 +3,7 @@
 // on the admin page) can delete. The limits here are enforced again by the
 // Firestore security rules in firestore.rules.
 
-import { firebaseEnabled, firebase } from "./firebase.js?v=20261029b";
+import { firebaseEnabled, firebase } from "./firebase.js?v=20261029c";
 
 const NAME_KEY = "sml-nickname";
 const LAST_POST_KEY = "sml-last-comment";
@@ -151,20 +151,22 @@ function commentItem(c, onReply) {
   return node;
 }
 
-async function initArticleComments(article) {
-  const mount = document.getElementById("comments");
-  if (!mount || !commentsEnabled()) return;
-
-  const title = el("h2", "section-title", "Kommentit ");
+// Builds a live comment section in `mount` for anything with an id: a story,
+// or a letter ("letter-<id>"). `prefix` keeps form ids unique when several
+// sections are on one page; `onCount` hears the number of comments.
+export async function mountComments(mount, threadId, { prefix = "c", compact = false, onCount = null } = {}) {
+  const article = { id: threadId };
+  const title = el(compact ? "h4" : "h2", compact ? "comments__subtitle" : "section-title", "Kommentit ");
   const count = el("span", "comments__count", "0");
   title.append(count);
   const main = commentForm({
-    id: "c", label: "Kommentti", placeholder: "Kirjoita kommenttisi…",
+    id: prefix, label: "Kommentti", placeholder: "Kirjoita kommenttisi…",
     submit: "Lähetä kommentti", hint: "Kommentit näkyvät kaikille lukijoille.",
   });
   const list = el("ol", "comment-list");
   const empty = el("p", "comments__empty", "Ei vielä kommentteja. Ole ensimmäinen!");
-  mount.replaceChildren(title, main.form, empty, list);
+  // In a letter the "Kommentit (n)" button already names the section.
+  mount.replaceChildren(...(compact ? [] : [title]), main.form, empty, list);
 
   let fb;
   try {
@@ -181,7 +183,7 @@ async function initArticleComments(article) {
   function openReply(parentId, mention) {
     if (!reply || reply.parentId !== parentId) {
       const ui = commentForm({
-        id: "r", label: "Vastaus", placeholder: "Kirjoita vastauksesi…", submit: "Vastaa", reply: true,
+        id: `${prefix}r`, label: "Vastaus", placeholder: "Kirjoita vastauksesi…", submit: "Vastaa", reply: true,
       });
       ui.cancel.onclick = () => { reply = null; ui.form.remove(); };
       ui.form.addEventListener("submit", async (e) => {
@@ -236,6 +238,7 @@ async function initArticleComments(article) {
 
     const total = tops.length + Object.values(replies).reduce((n, r) => n + r.length, 0);
     count.textContent = String(total);
+    if (onCount) onCount(total);
     empty.classList.toggle("hidden", tops.length > 0);
     list.replaceChildren(...threads);
     placeReply();
@@ -245,6 +248,12 @@ async function initArticleComments(article) {
     e.preventDefault();
     postComment(fb, article, main, null);
   });
+}
+
+async function initArticleComments(article) {
+  const mount = document.getElementById("comments");
+  if (!mount || !commentsEnabled()) return;
+  await mountComments(mount, article.id);
 }
 
 if (document.body.dataset.page === "article") {

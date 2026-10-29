@@ -2,8 +2,8 @@
 // The owner signs in with the Firebase account whose UID is written into
 // firestore.rules; only that account is allowed to delete comments.
 
-import { commentsEnabled, firebase, commentDate } from "./comments.js?v=20261029b";
-import { firebaseAuth } from "./firebase.js?v=20261029b";
+import { commentsEnabled, firebase, commentDate } from "./comments.js?v=20261029c";
+import { firebaseAuth } from "./firebase.js?v=20261029c";
 
 const area = document.getElementById("commentsArea");
 let unsubscribe = null;
@@ -56,6 +56,11 @@ async function showList(fb, user) {
   let titles = {};
   try {
     for (const a of await loadArticles()) titles[a.id] = a.title;
+  } catch (e) {}
+  // Comments on letters to the editor have the thread id "letter-<id>".
+  try {
+    const letters = await fs.getDocs(fs.collection(db, "letters"));
+    for (const d of letters.docs) titles[`letter-${d.id}`] = `Mielipide: ${d.data().title}`;
   } catch (e) {}
 
   const info = el("p", "admin__help", `Kirjautunut: ${user.email}. Uusimmat kommentit ensin.`);

@@ -3,7 +3,8 @@
 // on the admin page) can publish them, and only published letters can be
 // read by others. firestore.rules enforces both.
 
-import { firebaseEnabled, firebase } from "./firebase.js?v=20261029b";
+import { firebaseEnabled, firebase } from "./firebase.js?v=20261029c";
+import { mountComments } from "./comments.js?v=20261029c";
 
 export const LIMITS = { name: 60, place: 60, title: 120, text: 4000 };
 const NAME_KEY = "sml-letter-name";
@@ -39,7 +40,41 @@ function paragraphs(node, text) {
 const PREVIEW_CHARS = 280;
 const PAGE_SIZE = 10;
 
-export function letterCard(l) {
+// Comments on a letter use the story comment system with this thread id.
+export function letterThreadId(letterId) {
+  return `letter-${letterId}`;
+}
+
+function commentLabel(n) {
+  return n ? `Kommentit (${n})` : "Kommentoi";
+}
+
+// Comment button and a section that loads the first time it's opened.
+function letterComments(l, count) {
+  const wrap = el("div", "letter__comments");
+  const btn = el("button", "letter__comment-btn", commentLabel(count));
+  btn.type = "button";
+  btn.setAttribute("aria-expanded", "false");
+  const box = el("div", "letter__comment-box hidden");
+  let loaded = false;
+  btn.onclick = () => {
+    const open = box.classList.toggle("hidden") === false;
+    btn.setAttribute("aria-expanded", String(open));
+    btn.classList.toggle("is-open", open);
+    if (open && !loaded) {
+      loaded = true;
+      mountComments(box, letterThreadId(l.id), {
+        prefix: `lc${l.id}`,
+        compact: true,
+        onCount: (n) => { btn.textContent = commentLabel(n); },
+      });
+    }
+  };
+  wrap.append(btn, box);
+  return wrap;
+}
+
+export function letterCard(l, commentCount = 0) {
   const card = el("article", "letter");
   card.append(el("h3", "letter__title", l.title));
   const sign = el("p", "letter__sign");
@@ -66,18 +101,19 @@ export function letterCard(l) {
     };
     card.append(toggle);
   }
+  if (l.id) card.append(letterComments(l, commentCount));
   return card;
 }
 
 // Shows letters PAGE_SIZE at a time with a "show more" button.
-function showLetters(listBox, letters) {
+function showLetters(listBox, letters, counts = {}) {
   let shown = 0;
   const more = el("button", "btn btn--ghost letters__more");
   more.type = "button";
   const step = () => {
     const next = letters.slice(shown, shown + PAGE_SIZE);
     shown += next.length;
-    more.before(...next.map(letterCard));
+    more.before(...next.map((l) => letterCard(l, counts[l.id] || 0)));
     const left = letters.length - shown;
     more.textContent = `Näytä lisää kirjoituksia (${left})`;
     more.classList.toggle("hidden", left <= 0);
@@ -195,11 +231,21 @@ async function init() {
   // ----- Published letters -----
   try {
     const snap = await fs.getDocs(fs.query(fs.collection(db, "letters"), fs.where("status", "==", "published")));
-    const letters = snap.docs.map((d) => d.data()).sort((a, b) => letterDate(b) - letterDate(a));
+    const letters = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => letterDate(b) - letterDate(a));
+    // One query for the comment counts of all letters.
+    const counts = {};
+    try {
+      const cs = await fs.getDocs(fs.query(fs.collection(db, "comments"),
+        fs.where("articleId", ">=", "letter-"), fs.where("articleId", "<", "letter-\uf8ff")));
+      for (const c of cs.docs) {
+        const id = c.data().articleId.slice("letter-".length);
+        counts[id] = (counts[id] || 0) + 1;
+      }
+    } catch (e) { /* counts are optional */ }
     if (!letters.length) {
       listBox.replaceChildren(el("p", "letters__empty", "Ei vielä julkaistuja kirjoituksia. Kirjoita ensimmäinen!"));
     } else {
-      showLetters(listBox, letters);
+      showLetters(listBox, letters, counts);
     }
   } catch (err) {
     listBox.replaceChildren(el("p", "letters__empty", "Kirjoituksia ei voitu ladata."));
