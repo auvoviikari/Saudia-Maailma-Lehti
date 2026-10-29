@@ -114,6 +114,7 @@ function startMemberEdit(m) {
   $("teamFormTitle").textContent = `Muokkaa: ${m.name}`;
   $("teamSaveBtn").textContent = "Tallenna muutokset";
   $("teamCancelBtn").classList.remove("hidden");
+  window.SML_openSection("teamBox");
   $("teamFormTitle").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 

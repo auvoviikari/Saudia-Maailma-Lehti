@@ -35,17 +35,59 @@ function paragraphs(node, text) {
   }
 }
 
+// Letters longer than this start folded to a short preview.
+const PREVIEW_CHARS = 280;
+const PAGE_SIZE = 10;
+
 export function letterCard(l) {
   const card = el("article", "letter");
   card.append(el("h3", "letter__title", l.title));
-  const body = el("div", "letter__text");
-  paragraphs(body, l.text);
-  card.append(body);
   const sign = el("p", "letter__sign");
   sign.append(el("strong", null, l.name));
   if (l.place) sign.append(`, ${l.place}`);
-  card.append(sign, el("div", "meta", formatDate(letterDate(l).toISOString())));
+  sign.append(el("span", "letter__date", ` · ${formatDate(letterDate(l).toISOString())}`));
+  card.append(sign);
+
+  const body = el("div", "letter__text");
+  paragraphs(body, l.text);
+  card.append(body);
+
+  const long = l.text.length > PREVIEW_CHARS || /\n\s*\n/.test(l.text.trim());
+  if (long) {
+    card.classList.add("is-folded");
+    const toggle = el("button", "letter__toggle", "Lue koko kirjoitus");
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.onclick = () => {
+      const folded = card.classList.toggle("is-folded");
+      toggle.textContent = folded ? "Lue koko kirjoitus" : "Näytä vähemmän";
+      toggle.setAttribute("aria-expanded", String(!folded));
+      if (folded) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+    card.append(toggle);
+  }
   return card;
+}
+
+// Shows letters PAGE_SIZE at a time with a "show more" button.
+function showLetters(listBox, letters) {
+  let shown = 0;
+  const more = el("button", "btn btn--ghost letters__more");
+  more.type = "button";
+  const step = () => {
+    const next = letters.slice(shown, shown + PAGE_SIZE);
+    shown += next.length;
+    more.before(...next.map(letterCard));
+    const left = letters.length - shown;
+    more.textContent = `Näytä lisää kirjoituksia (${left})`;
+    more.classList.toggle("hidden", left <= 0);
+  };
+  more.onclick = step;
+  listBox.replaceChildren(
+    el("p", "meta letters__count", `${letters.length} ${letters.length === 1 ? "kirjoitus" : "kirjoitusta"}`),
+    more,
+  );
+  step();
 }
 
 function field(id, label, { textarea = false, max, placeholder = "", hint = "" } = {}) {
@@ -157,7 +199,7 @@ async function init() {
     if (!letters.length) {
       listBox.replaceChildren(el("p", "letters__empty", "Ei vielä julkaistuja kirjoituksia. Kirjoita ensimmäinen!"));
     } else {
-      listBox.replaceChildren(...letters.map(letterCard));
+      showLetters(listBox, letters);
     }
   } catch (err) {
     listBox.replaceChildren(el("p", "letters__empty", "Kirjoituksia ei voitu ladata."));

@@ -72,6 +72,9 @@ function showList(fb) {
     const waiting = docs.filter((d) => d.data().status !== "published");
     const live = docs.filter((d) => d.data().status === "published");
     pendingTitle.textContent = `Odottaa julkaisua (${waiting.length})`;
+    // Shown in the box heading too, so new letters are seen even when it's closed.
+    const heading = document.querySelector("#lettersBox > h2");
+    if (heading) heading.textContent = waiting.length ? `Mielipidekirjoitukset (${waiting.length} uutta)` : "Mielipidekirjoitukset";
     publishedTitle.textContent = `Julkaistut (${live.length})`;
     pending.replaceChildren(...(waiting.length ? waiting.map((d) => letterRow(fb, d, msg)) : [el("li", "letter-row--empty", "Ei uusia kirjoituksia.")]));
     published.replaceChildren(...(live.length ? live.map((d) => letterRow(fb, d, msg)) : [el("li", "letter-row--empty", "Ei julkaistuja kirjoituksia.")]));

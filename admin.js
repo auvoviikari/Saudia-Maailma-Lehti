@@ -226,6 +226,7 @@ function startEdit(a) {
   $("editorTitle").textContent = "Muokkaa uutista";
   $("publishBtn").textContent = "Tallenna muutokset";
   $("cancelEditBtn").classList.remove("hidden");
+  window.SML_openSection("editorBox");
   $("editorBox").scrollIntoView({ behavior: "smooth" });
 }
 
@@ -436,6 +437,7 @@ async function login() {
     $("listBox").classList.remove("hidden");
     if (!$("fAuthor").value) $("fAuthor").value = "Toimitus";
     renderList();
+    window.SML_closeSection("loginBox");
     document.dispatchEvent(new CustomEvent("sml:github-login"));
   } catch (err) {
     setStatus(status, err.status === 401 ? "Token ei kelpaa." : err.message, "err");
