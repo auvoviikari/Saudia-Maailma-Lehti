@@ -2,8 +2,8 @@
 // The owner signs in with the Firebase account whose UID is written into
 // firestore.rules; only that account is allowed to delete comments.
 
-import { commentsEnabled, firebase, commentDate } from "./comments.js";
-import { firebaseAuth } from "./firebase.js";
+import { commentsEnabled, firebase, commentDate } from "./comments.js?v=20261029";
+import { firebaseAuth } from "./firebase.js?v=20261029";
 
 const area = document.getElementById("commentsArea");
 let unsubscribe = null;
